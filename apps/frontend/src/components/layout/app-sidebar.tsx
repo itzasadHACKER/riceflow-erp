@@ -55,6 +55,8 @@ import {
   ArrowLeftRight,
   Scale,
   FileCheck,
+  FileSpreadsheet,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -271,6 +273,9 @@ const moduleNav: NavSection[] = [
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
           { title: "Custom Tables & Auth", href: "/dashboard/admin-enhancements", icon: Shield },
           { title: "UDF & Print Layouts", href: "/dashboard/admin-tools", icon: Printer },
+          { title: "Audit Trail", href: "/dashboard/audit-trail", icon: Shield },
+          { title: "Data Import", href: "/dashboard/data-import", icon: FileSpreadsheet },
+          { title: "Integrity Checks", href: "/dashboard/integrity-checks", icon: ShieldCheck },
         ],
       },
     ],

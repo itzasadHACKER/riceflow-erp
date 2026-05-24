@@ -678,6 +678,7 @@ model JournalEntryLine {
 
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([accountId, journalEntryId])
   @@map("journal_entry_lines")
 }
 

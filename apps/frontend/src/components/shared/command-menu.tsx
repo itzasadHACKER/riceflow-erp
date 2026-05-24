@@ -62,6 +62,9 @@ import {
   ArrowLeftRight,
   FileCheck,
   Scale,
+  FileSpreadsheet,
+  ShieldCheck,
+  Upload,
 } from "lucide-react";
 
 interface CommandMenuProps {
@@ -122,6 +125,9 @@ const pages = [
   { title: "Transfers & Counting", href: "/dashboard/inventory-enhanced", icon: ArrowLeftRight },
   { title: "Recurring JEs & Bank Import", href: "/dashboard/finance-enhanced", icon: Repeat },
   { title: "3-Way Matching & Landed Costs", href: "/dashboard/purchase-enhanced", icon: FileCheck },
+  { title: "Audit Trail", href: "/dashboard/audit-trail", icon: ShieldCheck },
+  { title: "Data Import", href: "/dashboard/data-import", icon: Upload },
+  { title: "Integrity Checks & Reports", href: "/dashboard/integrity-checks", icon: ShieldCheck },
 ];
 
 const actions = [

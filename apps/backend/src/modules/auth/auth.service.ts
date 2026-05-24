@@ -19,7 +19,24 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
+  private validatePasswordStrength(password: string) {
+    if (password.length < 8) {
+      throw new ConflictException('Password must be at least 8 characters long');
+    }
+    if (!/[A-Z]/.test(password)) {
+      throw new ConflictException('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(password)) {
+      throw new ConflictException('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      throw new ConflictException('Password must contain at least one number');
+    }
+  }
+
   async register(dto: RegisterDto) {
+    this.validatePasswordStrength(dto.password);
+
     const existingUser = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -108,13 +125,32 @@ export class AuthService {
     };
   }
 
+  private loginAttempts = new Map<string, { count: number; lastAttempt: Date }>();
+  private readonly MAX_LOGIN_ATTEMPTS = 5;
+  private readonly LOCKOUT_MINUTES = 15;
+
   async login(dto: LoginDto) {
+    const attemptKey = dto.email.toLowerCase();
+    const attempt = this.loginAttempts.get(attemptKey);
+    if (attempt) {
+      const minutesSince = (Date.now() - attempt.lastAttempt.getTime()) / 60000;
+      if (attempt.count >= this.MAX_LOGIN_ATTEMPTS && minutesSince < this.LOCKOUT_MINUTES) {
+        throw new UnauthorizedException(
+          `Account temporarily locked. Too many failed attempts. Try again in ${Math.ceil(this.LOCKOUT_MINUTES - minutesSince)} minutes.`,
+        );
+      }
+      if (minutesSince >= this.LOCKOUT_MINUTES) {
+        this.loginAttempts.delete(attemptKey);
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
       include: { organization: true },
     });
 
     if (!user || user.deletedAt) {
+      this.recordFailedAttempt(attemptKey);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -127,8 +163,11 @@ export class AuthService {
       user.passwordHash,
     );
     if (!isPasswordValid) {
+      this.recordFailedAttempt(attemptKey);
       throw new UnauthorizedException('Invalid credentials');
     }
+
+    this.loginAttempts.delete(attemptKey);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -222,6 +261,42 @@ export class AuthService {
           ? { id: ur.branch.id, name: ur.branch.name, code: ur.branch.code }
           : null,
       })),
+    };
+  }
+
+  private recordFailedAttempt(email: string) {
+    const existing = this.loginAttempts.get(email);
+    this.loginAttempts.set(email, {
+      count: (existing?.count || 0) + 1,
+      lastAttempt: new Date(),
+    });
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    this.validatePasswordStrength(newPassword);
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) throw new UnauthorizedException('Current password is incorrect');
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
+
+    return { message: 'Password changed successfully' };
+  }
+
+  async getActiveSessions(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { lastLoginAt: true, email: true },
+    });
+    return {
+      currentSession: { lastLogin: user?.lastLoginAt, email: user?.email },
     };
   }
 
