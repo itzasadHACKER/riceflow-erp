@@ -29,8 +29,13 @@ export default function AuthLayout({
           </blockquote>
         </div>
       </div>
-      <div className="flex flex-1 items-center justify-center p-8">
-        <div className="w-full max-w-sm">{children}</div>
+      <div className="flex flex-1 flex-col items-center justify-center p-8">
+        <div className="w-full max-w-sm flex-1 flex items-center justify-center">
+          <div className="w-full">{children}</div>
+        </div>
+        <footer className="py-3 text-center text-xs text-muted-foreground">
+          &copy; 2026 Grainix ERP. Powered by Asad Ali (0308-4420406)
+        </footer>
       </div>
     </div>
   );
