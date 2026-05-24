@@ -128,6 +128,7 @@ const pages = [
   { title: "Audit Trail", href: "/dashboard/audit-trail", icon: ShieldCheck },
   { title: "Data Import", href: "/dashboard/data-import", icon: Upload },
   { title: "Integrity Checks & Reports", href: "/dashboard/integrity-checks", icon: ShieldCheck },
+  { title: "New Season Setup", href: "/dashboard/new-season", icon: Calendar },
 ];
 
 const actions = [

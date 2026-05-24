@@ -54,4 +54,11 @@ export class SetupWizardController {
     const result = this.setupWizardService.getTutorials();
     return createResponse(result);
   }
+
+  @Get('new-season')
+  @ApiOperation({ summary: 'Get new season setup wizard steps for importing opening balances and starting a new season' })
+  async getNewSeasonWizard() {
+    const result = this.setupWizardService.getNewSeasonWizard();
+    return createResponse(result);
+  }
 }

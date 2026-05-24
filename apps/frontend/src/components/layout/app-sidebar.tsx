@@ -275,6 +275,7 @@ const moduleNav: NavSection[] = [
           { title: "UDF & Print Layouts", href: "/dashboard/admin-tools", icon: Printer },
           { title: "Audit Trail", href: "/dashboard/audit-trail", icon: Shield },
           { title: "Data Import", href: "/dashboard/data-import", icon: FileSpreadsheet },
+          { title: "New Season Setup", href: "/dashboard/new-season", icon: Calendar },
           { title: "Integrity Checks", href: "/dashboard/integrity-checks", icon: ShieldCheck },
         ],
       },
