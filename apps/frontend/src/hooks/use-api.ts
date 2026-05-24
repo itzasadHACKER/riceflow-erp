@@ -52,10 +52,15 @@ export function useApiList<T>(
 export function useApiMutation<TData, TVariables>(
   endpoint: string,
   method: "post" | "patch" | "delete" = "post",
-  invalidateKeys?: string[][]
+  optionsOrKeys?: string[][] | { invalidateKeys?: string[][]; onSuccess?: () => void }
 ) {
   const token = useAuthStore((s) => s.token);
   const queryClient = useQueryClient();
+
+  const invalidateKeys = Array.isArray(optionsOrKeys)
+    ? optionsOrKeys
+    : optionsOrKeys?.invalidateKeys;
+  const onSuccessCb = Array.isArray(optionsOrKeys) ? undefined : optionsOrKeys?.onSuccess;
 
   return useMutation<TData, Error, TVariables>({
     mutationFn: async (variables: TVariables) => {
@@ -76,6 +81,7 @@ export function useApiMutation<TData, TVariables>(
           queryClient.invalidateQueries({ queryKey: key })
         );
       }
+      onSuccessCb?.();
     },
   });
 }

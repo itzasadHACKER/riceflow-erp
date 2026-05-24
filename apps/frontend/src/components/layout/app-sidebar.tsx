@@ -17,6 +17,7 @@ import {
   Bot,
   Settings,
   ChevronDown,
+  ChevronRight,
   Building,
   FlaskConical,
   Receipt,
@@ -36,6 +37,16 @@ import {
   Megaphone,
   Mail,
   PiggyBank,
+  Phone,
+  FolderKanban,
+  PackageSearch,
+  CreditCard,
+  Target,
+  Shield,
+  Calendar,
+  Hash,
+  Handshake,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -47,9 +58,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,67 +78,183 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useAuthStore } from "@/stores/auth-store";
 
-const mainNav = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-];
+interface NavItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}
 
-const moduleNav = [
+interface NavGroup {
+  title: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
+interface NavSection {
+  label: string;
+  groups: NavGroup[];
+}
+
+const moduleNav: NavSection[] = [
   {
     label: "Organization",
-    items: [
-      { title: "Organization", href: "/dashboard/organization", icon: Building2 },
-      { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
-      { title: "Workflow", href: "/dashboard/workflow", icon: GitBranch },
-      { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
+    groups: [
+      {
+        title: "Company",
+        icon: Building2,
+        items: [
+          { title: "Organization", href: "/dashboard/organization", icon: Building2 },
+          { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
+          { title: "Workflow", href: "/dashboard/workflow", icon: GitBranch },
+          { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
+          { title: "Email", href: "/dashboard/email", icon: Mail },
+        ],
+      },
     ],
   },
   {
     label: "Finance",
-    items: [
-      { title: "Finance", href: "/dashboard/finance", icon: Wallet },
-      { title: "Expense", href: "/dashboard/expense", icon: Receipt },
-      { title: "Bank", href: "/dashboard/bank", icon: Landmark },
-      { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
-      { title: "Assets", href: "/dashboard/assets", icon: Building },
-      { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
+    groups: [
+      {
+        title: "Accounting",
+        icon: Wallet,
+        items: [
+          { title: "Chart of Accounts", href: "/dashboard/finance", icon: Wallet },
+          { title: "Expense & Vouchers", href: "/dashboard/expense", icon: Receipt },
+          { title: "Bank & Cheques", href: "/dashboard/bank", icon: Landmark },
+          { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
+          { title: "Assets", href: "/dashboard/assets", icon: Building },
+          { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
+        ],
+      },
+      {
+        title: "Financial Enhancements",
+        icon: Calendar,
+        items: [
+          { title: "Cost Centers", href: "/dashboard/cost-centers", icon: Building2 },
+          { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar },
+          { title: "Payment Wizard", href: "/dashboard/payment-wizard", icon: CreditCard },
+        ],
+      },
     ],
   },
   {
-    label: "Operations",
-    items: [
-      { title: "Procurement", href: "/dashboard/procurement", icon: Wheat },
-      { title: "Production", href: "/dashboard/production", icon: Factory },
-      { title: "Inventory", href: "/dashboard/inventory", icon: Warehouse },
-      { title: "Machines", href: "/dashboard/machines", icon: Cog },
-      { title: "Quality", href: "/dashboard/quality-control", icon: FlaskConical },
-      { title: "BOM", href: "/dashboard/bom", icon: Layers },
-      { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
+    label: "Sales & CRM",
+    groups: [
+      {
+        title: "Sales",
+        icon: ShoppingCart,
+        items: [
+          { title: "Sales Orders", href: "/dashboard/sales", icon: ShoppingCart },
+          { title: "Sales Quotations", href: "/dashboard/sales-quotations", icon: FileText },
+          { title: "Export Sales", href: "/dashboard/export-sales", icon: Globe },
+          { title: "Pricing", href: "/dashboard/pricing", icon: Tag },
+          { title: "Commissions", href: "/dashboard/commissions", icon: Percent },
+          { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
+        ],
+      },
+      {
+        title: "CRM & Marketing",
+        icon: UserSearch,
+        items: [
+          { title: "CRM", href: "/dashboard/crm", icon: UserSearch },
+          { title: "Marketing Campaigns", href: "/dashboard/marketing-campaigns", icon: Target },
+        ],
+      },
     ],
   },
   {
-    label: "Sales",
-    items: [
-      { title: "Sales", href: "/dashboard/sales", icon: ShoppingCart },
-      { title: "Export Sales", href: "/dashboard/export-sales", icon: Globe },
-      { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
-      { title: "Commissions", href: "/dashboard/commissions", icon: Percent },
-      { title: "Transport", href: "/dashboard/transport", icon: Truck },
+    label: "Purchasing",
+    groups: [
+      {
+        title: "Procurement",
+        icon: Wheat,
+        items: [
+          { title: "Purchase Orders", href: "/dashboard/procurement", icon: Wheat },
+          { title: "Requisitions & RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Inventory & Logistics",
+    groups: [
+      {
+        title: "Inventory",
+        icon: Warehouse,
+        items: [
+          { title: "Stock & Warehouses", href: "/dashboard/inventory", icon: Warehouse },
+          { title: "Batch & Serial", href: "/dashboard/batch-serial", icon: Hash },
+          { title: "Pick & Pack", href: "/dashboard/pick-pack", icon: PackageSearch },
+          { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
+        ],
+      },
+      {
+        title: "Logistics",
+        icon: Truck,
+        items: [
+          { title: "Transport", href: "/dashboard/transport", icon: Truck },
+          { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Production",
+    groups: [
+      {
+        title: "Manufacturing",
+        icon: Factory,
+        items: [
+          { title: "Production Batches", href: "/dashboard/production", icon: Factory },
+          { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory },
+          { title: "BOM", href: "/dashboard/bom", icon: Layers },
+          { title: "MRP Engine", href: "/dashboard/mrp", icon: Cog },
+          { title: "Machines", href: "/dashboard/machines", icon: Cog },
+          { title: "Quality Control", href: "/dashboard/quality-control", icon: FlaskConical },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Services & Projects",
+    groups: [
+      {
+        title: "Service Management",
+        icon: Phone,
+        items: [
+          { title: "Service Calls", href: "/dashboard/service-management", icon: Phone },
+          { title: "Projects", href: "/dashboard/project-management", icon: FolderKanban },
+        ],
+      },
     ],
   },
   {
     label: "Intelligence",
-    items: [
-      { title: "CRM", href: "/dashboard/crm", icon: UserSearch },
-      { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-      { title: "Market", href: "/dashboard/market", icon: TrendingUp },
-      { title: "Documents", href: "/dashboard/documents", icon: FileText },
-      { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
-      { title: "Email", href: "/dashboard/email", icon: Mail },
-      { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
+    groups: [
+      {
+        title: "Reports & BI",
+        icon: BarChart3,
+        items: [
+          { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+          { title: "Market Intel", href: "/dashboard/market", icon: TrendingUp },
+          { title: "Documents", href: "/dashboard/documents", icon: FileText },
+          { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Administration",
+    groups: [
+      {
+        title: "Admin Tools",
+        icon: Shield,
+        items: [
+          { title: "Settings", href: "/dashboard/settings", icon: Settings },
+          { title: "Custom Tables & Auth", href: "/dashboard/admin-enhancements", icon: Shield },
+        ],
+      },
     ],
   },
 ];
@@ -157,41 +292,65 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={pathname === item.href}
-                    tooltip={item.title}
-                  >
-                    <item.icon className="size-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard" />}
+                  isActive={pathname === "/dashboard"}
+                  tooltip="Dashboard"
+                >
+                  <LayoutDashboard className="size-4" />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarSeparator />
 
-        {moduleNav.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+        {moduleNav.map((section) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      render={<Link href={item.href} />}
-                      isActive={pathname.startsWith(item.href)}
-                      tooltip={item.title}
+                {section.groups.map((group) => {
+                  const isGroupActive = group.items.some((item) =>
+                    pathname.startsWith(item.href)
+                  );
+                  return (
+                    <Collapsible
+                      key={group.title}
+                      defaultOpen={isGroupActive}
+                      className="group/collapsible"
                     >
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger
+                          render={
+                            <SidebarMenuButton tooltip={group.title} />
+                          }
+                        >
+                          <group.icon className="size-4" />
+                          <span>{group.title}</span>
+                          <ChevronRight className="ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {group.items.map((item) => (
+                              <SidebarMenuSubItem key={item.href}>
+                                <SidebarMenuSubButton
+                                  render={<Link href={item.href} />}
+                                  isActive={pathname.startsWith(item.href)}
+                                >
+                                  <span>{item.title}</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

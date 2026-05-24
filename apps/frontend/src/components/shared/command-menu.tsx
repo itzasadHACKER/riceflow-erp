@@ -44,6 +44,15 @@ import {
   Megaphone,
   Mail,
   PiggyBank,
+  Phone,
+  FolderKanban,
+  PackageSearch,
+  CreditCard,
+  Target,
+  Shield,
+  Calendar,
+  Hash,
+  Handshake,
 } from "lucide-react";
 
 interface CommandMenuProps {
@@ -83,6 +92,20 @@ const pages = [
   { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
   { title: "Email & Communication", href: "/dashboard/email", icon: Mail },
   { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
+  { title: "Service Management", href: "/dashboard/service-management", icon: Phone },
+  { title: "Project Management", href: "/dashboard/project-management", icon: FolderKanban },
+  { title: "MRP Engine", href: "/dashboard/mrp", icon: Cog },
+  { title: "Sales Quotations", href: "/dashboard/sales-quotations", icon: FileText },
+  { title: "Pricing & Discounts", href: "/dashboard/pricing", icon: Tag },
+  { title: "Requisitions & RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake },
+  { title: "Batch & Serial Tracking", href: "/dashboard/batch-serial", icon: Hash },
+  { title: "Pick & Pack", href: "/dashboard/pick-pack", icon: PackageSearch },
+  { title: "Cost Centers", href: "/dashboard/cost-centers", icon: Building2 },
+  { title: "Payment Wizard & Dunning", href: "/dashboard/payment-wizard", icon: CreditCard },
+  { title: "Marketing Campaigns", href: "/dashboard/marketing-campaigns", icon: Target },
+  { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar },
+  { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory },
+  { title: "Admin Enhancements", href: "/dashboard/admin-enhancements", icon: Shield },
 ];
 
 const actions = [
@@ -100,6 +123,12 @@ const actions = [
   { title: "New Announcement", href: "/dashboard/announcements", icon: Plus },
   { title: "New Budget", href: "/dashboard/budgeting", icon: Plus },
   { title: "Compose Email", href: "/dashboard/email", icon: Plus },
+  { title: "New Service Call", href: "/dashboard/service-management", icon: Plus },
+  { title: "New Project", href: "/dashboard/project-management", icon: Plus },
+  { title: "New Quotation", href: "/dashboard/sales-quotations", icon: Plus },
+  { title: "Run MRP", href: "/dashboard/mrp", icon: Plus },
+  { title: "New Campaign", href: "/dashboard/marketing-campaigns", icon: Plus },
+  { title: "New Production Order", href: "/dashboard/production-orders", icon: Plus },
 ];
 
 export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {

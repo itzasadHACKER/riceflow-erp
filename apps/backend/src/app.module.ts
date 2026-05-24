@@ -40,6 +40,20 @@ import { GatePassModule } from './modules/gate-pass/gate-pass.module';
 import { SalespersonModule } from './modules/salesperson/salesperson.module';
 import { ProductCategoryModule } from './modules/product-category/product-category.module';
 import { BomModule } from './modules/bom/bom.module';
+import { ServiceManagementModule } from './modules/service-management/service-management.module';
+import { ProjectManagementModule } from './modules/project-management/project-management.module';
+import { MrpModule } from './modules/mrp/mrp.module';
+import { SalesQuotationModule } from './modules/sales-quotation/sales-quotation.module';
+import { PricingModule } from './modules/pricing/pricing.module';
+import { PurchaseEnhancementModule } from './modules/purchase-enhancement/purchase-enhancement.module';
+import { BatchSerialModule } from './modules/batch-serial/batch-serial.module';
+import { PickPackModule } from './modules/pick-pack/pick-pack.module';
+import { CostCenterModule } from './modules/cost-center/cost-center.module';
+import { PaymentWizardModule } from './modules/payment-wizard/payment-wizard.module';
+import { MarketingCampaignModule } from './modules/marketing-campaign/marketing-campaign.module';
+import { FinancialPeriodModule } from './modules/financial-period/financial-period.module';
+import { ProductionOrderModule } from './modules/production-order/production-order.module';
+import { AdminEnhancementModule } from './modules/admin-enhancement/admin-enhancement.module';
 
 @Module({
   imports: [
@@ -92,6 +106,20 @@ import { BomModule } from './modules/bom/bom.module';
     SalespersonModule,
     ProductCategoryModule,
     BomModule,
+    ServiceManagementModule,
+    ProjectManagementModule,
+    MrpModule,
+    SalesQuotationModule,
+    PricingModule,
+    PurchaseEnhancementModule,
+    BatchSerialModule,
+    PickPackModule,
+    CostCenterModule,
+    PaymentWizardModule,
+    MarketingCampaignModule,
+    FinancialPeriodModule,
+    ProductionOrderModule,
+    AdminEnhancementModule,
   ],
 })
 export class AppModule {}

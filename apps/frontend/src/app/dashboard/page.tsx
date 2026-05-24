@@ -31,6 +31,15 @@ import {
   Mail,
   PiggyBank,
   Percent,
+  Phone,
+  FolderKanban,
+  PackageSearch,
+  CreditCard,
+  Target,
+  Shield,
+  Calendar,
+  Hash,
+  Handshake,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -78,6 +87,20 @@ const quickLinks = [
   { title: "Email", href: "/dashboard/email", icon: Mail, desc: "Communication" },
   { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank, desc: "Budget Plans" },
   { title: "Commissions", href: "/dashboard/commissions", icon: Percent, desc: "Agent Commissions" },
+  { title: "Service Mgmt", href: "/dashboard/service-management", icon: Phone, desc: "Calls & Contracts" },
+  { title: "Projects", href: "/dashboard/project-management", icon: FolderKanban, desc: "Tasks & Timesheets" },
+  { title: "MRP Engine", href: "/dashboard/mrp", icon: Cog, desc: "Material Planning" },
+  { title: "Quotations", href: "/dashboard/sales-quotations", icon: FileText, desc: "Sales Quotes" },
+  { title: "Pricing", href: "/dashboard/pricing", icon: Tag, desc: "Price Lists" },
+  { title: "RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake, desc: "Requisitions" },
+  { title: "Batch & Serial", href: "/dashboard/batch-serial", icon: Hash, desc: "Traceability" },
+  { title: "Pick & Pack", href: "/dashboard/pick-pack", icon: PackageSearch, desc: "Shipping" },
+  { title: "Cost Centers", href: "/dashboard/cost-centers", icon: CreditCard, desc: "Cost Tracking" },
+  { title: "Payment Wizard", href: "/dashboard/payment-wizard", icon: CreditCard, desc: "Batch Payments" },
+  { title: "Marketing", href: "/dashboard/marketing-campaigns", icon: Target, desc: "Campaigns & ROI" },
+  { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar, desc: "Period Locking" },
+  { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory, desc: "Full Lifecycle" },
+  { title: "Admin Tools", href: "/dashboard/admin-enhancements", icon: Shield, desc: "UDT & Auth" },
 ];
 
 export default function DashboardPage() {

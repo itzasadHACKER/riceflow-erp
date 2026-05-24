@@ -144,6 +144,39 @@ model Organization {
   salespersons       Salesperson[]
   salespersonSalesTransactions SalespersonSalesTransaction[]
   productCategories  ProductCategory[]
+  serviceCalls       ServiceCall[]
+  serviceContracts   ServiceContract[]
+  equipmentCards     EquipmentCard[]
+  projects           Project[]
+  timesheets         Timesheet[]
+  mrpRuns            MrpRun[]
+  demandForecasts    DemandForecast[]
+  salesQuotations    SalesQuotation[]
+  blanketAgreements  BlanketAgreement[]
+  priceLists         PriceList[]
+  discountGroups     DiscountGroup[]
+  specialPrices      SpecialPrice[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseQuotations PurchaseQuotation[]
+  batchRecords       BatchRecord[]
+  serialNumbers      SerialNumber[]
+  pickLists          PickList[]
+  packingLists       PackingList[]
+  costCenters        CostCenter[]
+  paymentRuns        PaymentRun[]
+  dunningLevels      DunningLevel[]
+  dunningRuns        DunningRun[]
+  marketingCampaigns MarketingCampaign[]
+  financialPeriods   FinancialPeriod[]
+  withholdingTaxConfigs WithholdingTaxConfig[]
+  internalReconciliations InternalReconciliation[]
+  advancePayments    AdvancePayment[]
+  userDefinedTables  UserDefinedTable[]
+  authorizationGroups AuthorizationGroup[]
+  inventoryValuations InventoryValuation[]
+  goodsTransactions  GoodsTransaction[]
+  productionOrders   ProductionOrder[]
+  returnRequests     ReturnRequest[]
 
   @@map("organizations")
 }
@@ -829,6 +862,7 @@ model Supplier {
   purchaseReturns  PurchaseReturn[]
   purchaseOrders   PurchaseOrder[]
   goodsReceipts    GoodsReceipt[]
+  purchaseQuotations PurchaseQuotation[]
 
   @@index([organizationId])
   @@map("suppliers")
@@ -1231,6 +1265,10 @@ model Customer {
   creditNotes      CreditNote[]
   salesReturns     SalesReturn[]
   quotations       Quotation[]
+  serviceCalls     ServiceCall[]
+  serviceContracts ServiceContract[]
+  equipmentCards   EquipmentCard[]
+  salesQuotations  SalesQuotation[]
 
   @@index([organizationId])
   @@map("customers")
@@ -3827,3 +3865,991 @@ model CustomerStatement {
   @@index([organizationId, customerId])
   @@map("customer_statements")
 }
+
+// ============================================================================
+// SERVICE MANAGEMENT (SAP B1 Feature)
+// ============================================================================
+
+enum ServiceCallStatus {
+  OPEN
+  IN_PROGRESS
+  ESCALATED
+  ON_HOLD
+  RESOLVED
+  CLOSED
+}
+
+enum ServiceCallPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model ServiceCall {
+  id               String              @id @default(uuid()) @db.Uuid
+  organizationId   String              @map("organization_id") @db.Uuid
+  callNumber       String              @map("call_number")
+  customerId       String              @map("customer_id") @db.Uuid
+  contactPerson    String?             @map("contact_person")
+  subject          String
+  description      String?             @db.Text
+  status           ServiceCallStatus   @default(OPEN)
+  priority         ServiceCallPriority @default(MEDIUM)
+  origin           String?             @default("PHONE")
+  itemCode         String?             @map("item_code")
+  serialNumber     String?             @map("serial_number")
+  equipmentCardId  String?             @map("equipment_card_id") @db.Uuid
+  assignedTo       String?             @map("assigned_to") @db.Uuid
+  resolutionNote   String?             @map("resolution_note") @db.Text
+  responseDate     DateTime?           @map("response_date")
+  resolutionDate   DateTime?           @map("resolution_date")
+  closedAt         DateTime?           @map("closed_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer            @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId, status])
+  @@index([organizationId, customerId])
+  @@map("service_calls")
+}
+
+model ServiceContract {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  contractNumber   String   @map("contract_number")
+  customerId       String   @map("customer_id") @db.Uuid
+  contractType     String   @default("WARRANTY") @map("contract_type")
+  description      String?  @db.Text
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
+  renewalDate      DateTime? @map("renewal_date") @db.Date
+  coverageType     String?  @map("coverage_type")
+  responseTimeSla  Int?     @map("response_time_sla")
+  resolutionTimeSla Int?    @map("resolution_time_sla")
+  isActive         Boolean  @default(true) @map("is_active")
+  value            Decimal? @db.Decimal(18, 4)
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId, customerId])
+  @@map("service_contracts")
+}
+
+model EquipmentCard {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  equipmentNumber  String   @map("equipment_number")
+  customerId       String   @map("customer_id") @db.Uuid
+  itemCode         String?  @map("item_code")
+  itemName         String?  @map("item_name")
+  serialNumber     String?  @map("serial_number")
+  manufacturer     String?
+  model            String?
+  installDate      DateTime? @map("install_date") @db.Date
+  warrantyStart    DateTime? @map("warranty_start") @db.Date
+  warrantyEnd      DateTime? @map("warranty_end") @db.Date
+  location         String?
+  status           String   @default("ACTIVE")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId, customerId])
+  @@map("equipment_cards")
+}
+
+model ServiceSolution {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  title            String
+  description      String   @db.Text
+  symptom          String?  @db.Text
+  cause            String?  @db.Text
+  resolution       String   @db.Text
+  itemCode         String?  @map("item_code")
+  status           String   @default("PUBLISHED")
+  createdById      String?  @map("created_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("service_solutions")
+}
+
+// ============================================================================
+// PROJECT MANAGEMENT (SAP B1 Feature)
+// ============================================================================
+
+enum ProjectStatus {
+  PLANNED
+  IN_PROGRESS_PROJ
+  ON_HOLD_PROJ
+  COMPLETED_PROJ
+  CANCELLED_PROJ
+}
+
+model Project {
+  id               String        @id @default(uuid()) @db.Uuid
+  organizationId   String        @map("organization_id") @db.Uuid
+  projectCode      String        @map("project_code")
+  name             String
+  description      String?       @db.Text
+  customerId       String?       @map("customer_id") @db.Uuid
+  managerId        String?       @map("manager_id") @db.Uuid
+  status           ProjectStatus @default(PLANNED)
+  startDate        DateTime?     @map("start_date") @db.Date
+  endDate          DateTime?     @map("end_date") @db.Date
+  actualStart      DateTime?     @map("actual_start") @db.Date
+  actualEnd        DateTime?     @map("actual_end") @db.Date
+  budgetAmount     Decimal       @default(0) @map("budget_amount") @db.Decimal(18, 4)
+  actualCost       Decimal       @default(0) @map("actual_cost") @db.Decimal(18, 4)
+  completionPercent Decimal      @default(0) @map("completion_percent") @db.Decimal(5, 2)
+  costCenterId     String?       @map("cost_center_id") @db.Uuid
+  notes            String?       @db.Text
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  organization     Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks            ProjectTask[]
+  timesheets       Timesheet[]
+  projectExpenses  ProjectExpense[]
+  milestones       ProjectMilestone[]
+
+  @@index([organizationId, status])
+  @@map("projects")
+}
+
+model ProjectTask {
+  id               String   @id @default(uuid()) @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  parentTaskId     String?  @map("parent_task_id") @db.Uuid
+  taskCode         String   @map("task_code")
+  name             String
+  description      String?  @db.Text
+  assignedToId     String?  @map("assigned_to_id") @db.Uuid
+  status           String   @default("PENDING")
+  priority         String   @default("MEDIUM")
+  startDate        DateTime? @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  estimatedHours   Decimal? @map("estimated_hours") @db.Decimal(8, 2)
+  actualHours      Decimal  @default(0) @map("actual_hours") @db.Decimal(8, 2)
+  completionPercent Decimal @default(0) @map("completion_percent") @db.Decimal(5, 2)
+  dependsOnTaskId  String?  @map("depends_on_task_id") @db.Uuid
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_tasks")
+}
+
+model Timesheet {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  taskId           String?  @map("task_id") @db.Uuid
+  employeeId       String?  @map("employee_id") @db.Uuid
+  date             DateTime @db.Date
+  hours            Decimal  @db.Decimal(6, 2)
+  description      String?  @db.Text
+  billable         Boolean  @default(true)
+  approved         Boolean  @default(false)
+  hourlyRate       Decimal? @map("hourly_rate") @db.Decimal(10, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project          Project      @relation(fields: [projectId], references: [id])
+
+  @@index([organizationId, projectId])
+  @@map("timesheets")
+}
+
+model ProjectExpense {
+  id               String   @id @default(uuid()) @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  description      String
+  amount           Decimal  @db.Decimal(18, 4)
+  date             DateTime @db.Date
+  category         String?
+  receiptRef       String?  @map("receipt_ref")
+  approved         Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_expenses")
+}
+
+model ProjectMilestone {
+  id               String   @id @default(uuid()) @db.Uuid
+  projectId        String   @map("project_id") @db.Uuid
+  name             String
+  description      String?  @db.Text
+  dueDate          DateTime @map("due_date") @db.Date
+  completedDate    DateTime? @map("completed_date") @db.Date
+  billingAmount    Decimal? @map("billing_amount") @db.Decimal(18, 4)
+  invoiced         Boolean  @default(false)
+  status           String   @default("PENDING")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  project          Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_milestones")
+}
+
+// ============================================================================
+// MRP (Material Requirements Planning) - SAP B1 Feature
+// ============================================================================
+
+model MrpRun {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  runNumber        String   @map("run_number")
+  runDate          DateTime @default(now()) @map("run_date")
+  planningHorizon  Int      @default(30) @map("planning_horizon")
+  status           String   @default("COMPLETED")
+  itemsProcessed   Int      @default(0) @map("items_processed")
+  recommendationsCount Int  @default(0) @map("recommendations_count")
+  parameters       Json?
+  createdById      String?  @map("created_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recommendations  MrpRecommendation[]
+
+  @@index([organizationId])
+  @@map("mrp_runs")
+}
+
+model MrpRecommendation {
+  id               String   @id @default(uuid()) @db.Uuid
+  mrpRunId         String   @map("mrp_run_id") @db.Uuid
+  itemId           String?  @map("item_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  itemName         String   @map("item_name")
+  orderType        String   @map("order_type")
+  requiredQty      Decimal  @map("required_qty") @db.Decimal(18, 4)
+  availableQty     Decimal  @default(0) @map("available_qty") @db.Decimal(18, 4)
+  shortageQty      Decimal  @default(0) @map("shortage_qty") @db.Decimal(18, 4)
+  recommendedQty   Decimal  @map("recommended_qty") @db.Decimal(18, 4)
+  recommendedDate  DateTime @map("recommended_date") @db.Date
+  leadTimeDays     Int      @default(0) @map("lead_time_days")
+  safetyStock      Decimal  @default(0) @map("safety_stock") @db.Decimal(18, 4)
+  status           String   @default("PENDING")
+  convertedToDoc   String?  @map("converted_to_doc")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  mrpRun           MrpRun   @relation(fields: [mrpRunId], references: [id], onDelete: Cascade)
+
+  @@index([mrpRunId])
+  @@map("mrp_recommendations")
+}
+
+model DemandForecast {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  itemId           String?  @map("item_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  periodStart      DateTime @map("period_start") @db.Date
+  periodEnd        DateTime @map("period_end") @db.Date
+  forecastQty      Decimal  @map("forecast_qty") @db.Decimal(18, 4)
+  actualQty        Decimal  @default(0) @map("actual_qty") @db.Decimal(18, 4)
+  method           String   @default("MANUAL")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, itemCode])
+  @@map("demand_forecasts")
+}
+
+// ============================================================================
+// SALES QUOTATIONS & BLANKET AGREEMENTS (SAP B1 Feature)
+// ============================================================================
+
+model SalesQuotation {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  quotationNumber  String   @map("quotation_number")
+  customerId       String   @map("customer_id") @db.Uuid
+  contactPerson    String?  @map("contact_person")
+  quotationDate    DateTime @default(now()) @map("quotation_date") @db.Date
+  validUntil       DateTime? @map("valid_until") @db.Date
+  status           String   @default("DRAFT")
+  currency         String   @default("PKR")
+  subtotal         Decimal  @default(0) @db.Decimal(18, 4)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  discountAmount   Decimal  @default(0) @map("discount_amount") @db.Decimal(18, 4)
+  totalAmount      Decimal  @default(0) @map("total_amount") @db.Decimal(18, 4)
+  terms            String?  @db.Text
+  notes            String?  @db.Text
+  salespersonId    String?  @map("salesperson_id") @db.Uuid
+  convertedToOrder String?  @map("converted_to_order")
+  items            Json     @default("[]")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer         Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([organizationId, status])
+  @@map("sales_quotations")
+}
+
+model BlanketAgreement {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  agreementNumber  String   @map("agreement_number")
+  type             String   @default("SALES")
+  method           String   @default("ITEMS")
+  partnerId        String   @map("partner_id") @db.Uuid
+  partnerType      String   @default("CUSTOMER") @map("partner_type")
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
+  status           String   @default("DRAFT")
+  plannedAmount    Decimal  @default(0) @map("planned_amount") @db.Decimal(18, 4)
+  fulfilledAmount  Decimal  @default(0) @map("fulfilled_amount") @db.Decimal(18, 4)
+  currency         String   @default("PKR")
+  terms            String?  @db.Text
+  items            Json     @default("[]")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type, status])
+  @@map("blanket_agreements")
+}
+
+// ============================================================================
+// PRICE LISTS & DISCOUNTS (SAP B1 Feature)
+// ============================================================================
+
+model PriceList {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  name             String
+  description      String?
+  currency         String   @default("PKR")
+  isDefault        Boolean  @default(false) @map("is_default")
+  isActive         Boolean  @default(true) @map("is_active")
+  validFrom        DateTime? @map("valid_from") @db.Date
+  validTo          DateTime? @map("valid_to") @db.Date
+  basePriceListId  String?  @map("base_price_list_id") @db.Uuid
+  factor           Decimal  @default(1) @db.Decimal(8, 4)
+  roundingMethod   String?  @map("rounding_method")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items            PriceListItem[]
+
+  @@index([organizationId])
+  @@map("price_lists")
+}
+
+model PriceListItem {
+  id               String   @id @default(uuid()) @db.Uuid
+  priceListId      String   @map("price_list_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  itemName         String?  @map("item_name")
+  price            Decimal  @db.Decimal(18, 4)
+  currency         String   @default("PKR")
+  minimumQty       Decimal  @default(0) @map("minimum_qty") @db.Decimal(18, 4)
+  autoUpdate       Boolean  @default(true) @map("auto_update")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  priceList        PriceList @relation(fields: [priceListId], references: [id], onDelete: Cascade)
+
+  @@map("price_list_items")
+}
+
+model DiscountGroup {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  name             String
+  type             String   @default("VOLUME")
+  properties       Json     @default("{}")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tiers            DiscountTier[]
+
+  @@index([organizationId])
+  @@map("discount_groups")
+}
+
+model DiscountTier {
+  id               String   @id @default(uuid()) @db.Uuid
+  discountGroupId  String   @map("discount_group_id") @db.Uuid
+  fromQty          Decimal  @default(0) @map("from_qty") @db.Decimal(18, 4)
+  toQty            Decimal? @map("to_qty") @db.Decimal(18, 4)
+  discountPercent  Decimal  @map("discount_percent") @db.Decimal(5, 2)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  discountGroup    DiscountGroup @relation(fields: [discountGroupId], references: [id], onDelete: Cascade)
+
+  @@map("discount_tiers")
+}
+
+model SpecialPrice {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  partnerId        String   @map("partner_id") @db.Uuid
+  partnerType      String   @default("CUSTOMER") @map("partner_type")
+  itemCode         String   @map("item_code")
+  price            Decimal  @db.Decimal(18, 4)
+  discountPercent  Decimal? @map("discount_percent") @db.Decimal(5, 2)
+  validFrom        DateTime? @map("valid_from") @db.Date
+  validTo          DateTime? @map("valid_to") @db.Date
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, partnerId, itemCode])
+  @@map("special_prices")
+}
+
+// ============================================================================
+// PURCHASE QUOTATIONS / RFQ & REQUISITIONS (SAP B1 Feature)
+// ============================================================================
+
+model PurchaseRequisition {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  requisitionNumber String  @map("requisition_number")
+  requestedById    String?  @map("requested_by_id") @db.Uuid
+  departmentId     String?  @map("department_id") @db.Uuid
+  requiredDate     DateTime @map("required_date") @db.Date
+  status           String   @default("DRAFT")
+  priority         String   @default("NORMAL")
+  justification    String?  @db.Text
+  totalAmount      Decimal  @default(0) @map("total_amount") @db.Decimal(18, 4)
+  items            Json     @default("[]")
+  approvedById     String?  @map("approved_by_id") @db.Uuid
+  approvedAt       DateTime? @map("approved_at")
+  convertedToPo    String?  @map("converted_to_po")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("purchase_requisitions")
+}
+
+model PurchaseQuotation {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  quotationNumber  String   @map("quotation_number")
+  supplierId       String   @map("supplier_id") @db.Uuid
+  requestDate      DateTime @default(now()) @map("request_date") @db.Date
+  responseDate     DateTime? @map("response_date") @db.Date
+  validUntil       DateTime? @map("valid_until") @db.Date
+  status           String   @default("SENT")
+  currency         String   @default("PKR")
+  totalAmount      Decimal  @default(0) @map("total_amount") @db.Decimal(18, 4)
+  items            Json     @default("[]")
+  terms            String?  @db.Text
+  notes            String?  @db.Text
+  selected         Boolean  @default(false)
+  convertedToPo    String?  @map("converted_to_po")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier         Supplier     @relation(fields: [supplierId], references: [id])
+
+  @@index([organizationId, status])
+  @@map("purchase_quotations")
+}
+
+// ============================================================================
+// BATCH & SERIAL NUMBER MANAGEMENT (SAP B1 Feature)
+// ============================================================================
+
+model BatchRecord {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  batchNumber      String   @map("batch_number")
+  itemId           String?  @map("item_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  quantity         Decimal  @db.Decimal(18, 4)
+  expiryDate       DateTime? @map("expiry_date") @db.Date
+  manufacturingDate DateTime? @map("manufacturing_date") @db.Date
+  supplierBatch    String?  @map("supplier_batch")
+  status           String   @default("AVAILABLE")
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  attributes       Json?
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, batchNumber, itemCode])
+  @@index([organizationId, itemCode])
+  @@map("batch_records")
+}
+
+model SerialNumber {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  serialNumber     String   @map("serial_number")
+  itemId           String?  @map("item_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  status           String   @default("AVAILABLE")
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  customerId       String?  @map("customer_id") @db.Uuid
+  purchaseDocRef   String?  @map("purchase_doc_ref")
+  salesDocRef      String?  @map("sales_doc_ref")
+  warrantyStart    DateTime? @map("warranty_start") @db.Date
+  warrantyEnd      DateTime? @map("warranty_end") @db.Date
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, serialNumber, itemCode])
+  @@index([organizationId, itemCode])
+  @@map("serial_numbers")
+}
+
+// ============================================================================
+// PICK AND PACK (SAP B1 Feature)
+// ============================================================================
+
+model PickList {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  pickListNumber   String   @map("pick_list_number")
+  salesOrderId     String?  @map("sales_order_id") @db.Uuid
+  status           String   @default("OPEN")
+  assignedTo       String?  @map("assigned_to") @db.Uuid
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  pickDate         DateTime @default(now()) @map("pick_date") @db.Date
+  completedAt      DateTime? @map("completed_at")
+  items            Json     @default("[]")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("pick_lists")
+}
+
+model PackingList {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  packingNumber    String   @map("packing_number")
+  pickListId       String?  @map("pick_list_id") @db.Uuid
+  salesOrderId     String?  @map("sales_order_id") @db.Uuid
+  status           String   @default("PACKING")
+  totalWeight      Decimal  @default(0) @map("total_weight") @db.Decimal(12, 4)
+  totalPackages    Int      @default(0) @map("total_packages")
+  shippingMethod   String?  @map("shipping_method")
+  trackingNumber   String?  @map("tracking_number")
+  packages         Json     @default("[]")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("packing_lists")
+}
+
+// ============================================================================
+// COST CENTERS & PROFIT CENTERS (SAP B1 Feature)
+// ============================================================================
+
+model CostCenter {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  code             String
+  name             String
+  description      String?
+  type             String   @default("COST")
+  parentId         String?  @map("parent_id") @db.Uuid
+  managerId        String?  @map("manager_id") @db.Uuid
+  isActive         Boolean  @default(true) @map("is_active")
+  budgetAmount     Decimal  @default(0) @map("budget_amount") @db.Decimal(18, 4)
+  actualAmount     Decimal  @default(0) @map("actual_amount") @db.Decimal(18, 4)
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  allocations      CostAllocation[]
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("cost_centers")
+}
+
+model CostAllocation {
+  id               String   @id @default(uuid()) @db.Uuid
+  costCenterId     String   @map("cost_center_id") @db.Uuid
+  targetCenterId   String   @map("target_center_id") @db.Uuid
+  percentage       Decimal  @db.Decimal(5, 2)
+  description      String?
+  effectiveDate    DateTime @map("effective_date") @db.Date
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  costCenter       CostCenter @relation(fields: [costCenterId], references: [id], onDelete: Cascade)
+
+  @@map("cost_allocations")
+}
+
+// ============================================================================
+// PAYMENT WIZARD & DUNNING (SAP B1 Feature)
+// ============================================================================
+
+model PaymentRun {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  runNumber        String   @map("run_number")
+  runDate          DateTime @default(now()) @map("run_date") @db.Date
+  type             String   @default("OUTGOING")
+  paymentMethod    String   @default("BANK_TRANSFER") @map("payment_method")
+  status           String   @default("DRAFT")
+  totalAmount      Decimal  @default(0) @map("total_amount") @db.Decimal(18, 4)
+  paymentsCount    Int      @default(0) @map("payments_count")
+  processedAt      DateTime? @map("processed_at")
+  payments         Json     @default("[]")
+  filters          Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("payment_runs")
+}
+
+model DunningLevel {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  level            Int
+  name             String
+  daysOverdue      Int      @map("days_overdue")
+  chargePercent    Decimal  @default(0) @map("charge_percent") @db.Decimal(5, 2)
+  chargeAmount     Decimal  @default(0) @map("charge_amount") @db.Decimal(18, 4)
+  letterTemplate   String?  @map("letter_template") @db.Text
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, level])
+  @@map("dunning_levels")
+}
+
+model DunningRun {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  runDate          DateTime @default(now()) @map("run_date") @db.Date
+  status           String   @default("DRAFT")
+  customersCount   Int      @default(0) @map("customers_count")
+  totalOverdue     Decimal  @default(0) @map("total_overdue") @db.Decimal(18, 4)
+  entries          Json     @default("[]")
+  processedAt      DateTime? @map("processed_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("dunning_runs")
+}
+
+// ============================================================================
+// MARKETING CAMPAIGNS (SAP B1 Feature)
+// ============================================================================
+
+model MarketingCampaign {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  campaignCode     String   @map("campaign_code")
+  name             String
+  description      String?  @db.Text
+  type             String   @default("EMAIL")
+  status           String   @default("PLANNED")
+  startDate        DateTime? @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  targetAudience   String?  @map("target_audience")
+  budget           Decimal  @default(0) @db.Decimal(18, 4)
+  actualCost       Decimal  @default(0) @map("actual_cost") @db.Decimal(18, 4)
+  expectedRevenue  Decimal  @default(0) @map("expected_revenue") @db.Decimal(18, 4)
+  actualRevenue    Decimal  @default(0) @map("actual_revenue") @db.Decimal(18, 4)
+  leadsGenerated   Int      @default(0) @map("leads_generated")
+  conversions      Int      @default(0)
+  sentCount        Int      @default(0) @map("sent_count")
+  openedCount      Int      @default(0) @map("opened_count")
+  clickedCount     Int      @default(0) @map("clicked_count")
+  notes            String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("marketing_campaigns")
+}
+
+// ============================================================================
+// FINANCIAL ENHANCEMENTS (SAP B1 Features)
+// ============================================================================
+
+model FinancialPeriod {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  fiscalYearId     String   @map("fiscal_year_id") @db.Uuid
+  periodNumber     Int      @map("period_number")
+  name             String
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
+  status           String   @default("OPEN")
+  closedAt         DateTime? @map("closed_at")
+  closedById       String?  @map("closed_by_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, fiscalYearId, periodNumber])
+  @@map("financial_periods")
+}
+
+model WithholdingTaxConfig {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  name             String
+  code             String
+  rate             Decimal  @db.Decimal(5, 2)
+  applicableTo     String   @default("VENDOR") @map("applicable_to")
+  thresholdAmount  Decimal  @default(0) @map("threshold_amount") @db.Decimal(18, 4)
+  accountCode      String?  @map("account_code")
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("withholding_tax_configs")
+}
+
+model InternalReconciliation {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  reconcNumber     String   @map("reconc_number")
+  partnerId        String   @map("partner_id") @db.Uuid
+  partnerType      String   @default("CUSTOMER") @map("partner_type")
+  reconciledDate   DateTime @default(now()) @map("reconciled_date") @db.Date
+  totalAmount      Decimal  @db.Decimal(18, 4) @map("total_amount")
+  entries          Json     @default("[]")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("internal_reconciliations")
+}
+
+model AdvancePayment {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  paymentNumber    String   @map("payment_number")
+  partnerId        String   @map("partner_id") @db.Uuid
+  partnerType      String   @default("CUSTOMER") @map("partner_type")
+  amount           Decimal  @db.Decimal(18, 4)
+  appliedAmount    Decimal  @default(0) @map("applied_amount") @db.Decimal(18, 4)
+  remainingAmount  Decimal  @default(0) @map("remaining_amount") @db.Decimal(18, 4)
+  paymentDate      DateTime @default(now()) @map("payment_date") @db.Date
+  paymentMethod    String   @default("BANK_TRANSFER") @map("payment_method")
+  reference        String?
+  status           String   @default("OPEN")
+  journalEntryId   String?  @map("journal_entry_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, partnerId])
+  @@map("advance_payments")
+}
+
+// ============================================================================
+// ADMINISTRATION ENHANCEMENTS (SAP B1 Features)
+// ============================================================================
+
+model UserDefinedTable {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  tableName        String   @map("table_name")
+  description      String?
+  columns          Json     @default("[]")
+  data             Json     @default("[]")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, tableName])
+  @@map("user_defined_tables")
+}
+
+model AuthorizationGroup {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  name             String
+  description      String?
+  module           String
+  permissions      Json     @default("{}")
+  dataOwnership    Json?    @map("data_ownership")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("authorization_groups")
+}
+
+// ============================================================================
+// INVENTORY VALUATION (SAP B1 Feature)
+// ============================================================================
+
+model InventoryValuation {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  itemId           String?  @map("item_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  valuationMethod  String   @default("MOVING_AVERAGE") @map("valuation_method")
+  standardCost     Decimal? @map("standard_cost") @db.Decimal(18, 4)
+  movingAvgCost    Decimal? @map("moving_avg_cost") @db.Decimal(18, 4)
+  lastPurchasePrice Decimal? @map("last_purchase_price") @db.Decimal(18, 4)
+  totalValue       Decimal  @default(0) @map("total_value") @db.Decimal(18, 4)
+  quantity         Decimal  @default(0) @db.Decimal(18, 4)
+  lastUpdated      DateTime @default(now()) @map("last_updated")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, itemCode])
+  @@map("inventory_valuations")
+}
+
+// ============================================================================
+// GOODS ISSUE / GOODS RECEIPT STANDALONE (SAP B1 Feature)
+// ============================================================================
+
+model GoodsTransaction {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  transactionNumber String  @map("transaction_number")
+  type             String   @default("RECEIPT")
+  date             DateTime @default(now()) @db.Date
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  reference        String?
+  remarks          String?  @db.Text
+  status           String   @default("DRAFT")
+  totalValue       Decimal  @default(0) @map("total_value") @db.Decimal(18, 4)
+  items            Json     @default("[]")
+  journalEntryId   String?  @map("journal_entry_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, type])
+  @@map("goods_transactions")
+}
+
+// ============================================================================
+// PRODUCTION ORDERS ENHANCED (SAP B1 Feature)
+// ============================================================================
+
+model ProductionOrder {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  orderNumber      String   @map("order_number")
+  bomId            String?  @map("bom_id") @db.Uuid
+  itemCode         String   @map("item_code")
+  itemName         String?  @map("item_name")
+  plannedQty       Decimal  @map("planned_qty") @db.Decimal(18, 4)
+  completedQty     Decimal  @default(0) @map("completed_qty") @db.Decimal(18, 4)
+  rejectedQty      Decimal  @default(0) @map("rejected_qty") @db.Decimal(18, 4)
+  status           String   @default("PLANNED")
+  startDate        DateTime? @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  actualStart      DateTime? @map("actual_start")
+  actualEnd        DateTime? @map("actual_end")
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  materialCost     Decimal  @default(0) @map("material_cost") @db.Decimal(18, 4)
+  laborCost        Decimal  @default(0) @map("labor_cost") @db.Decimal(18, 4)
+  overheadCost     Decimal  @default(0) @map("overhead_cost") @db.Decimal(18, 4)
+  totalCost        Decimal  @default(0) @map("total_cost") @db.Decimal(18, 4)
+  components       Json     @default("[]")
+  operations       Json     @default("[]")
+  remarks          String?  @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("production_orders")
+}
+
+// ============================================================================
+// SALES RETURNS ENHANCED (SAP B1 Feature - 2-step return)
+// ============================================================================
+
+model ReturnRequest {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  requestNumber    String   @map("request_number")
+  type             String   @default("SALES")
+  partnerId        String   @map("partner_id") @db.Uuid
+  partnerType      String   @default("CUSTOMER") @map("partner_type")
+  originalDocRef   String?  @map("original_doc_ref")
+  reason           String?  @db.Text
+  status           String   @default("PENDING")
+  totalAmount      Decimal  @default(0) @map("total_amount") @db.Decimal(18, 4)
+  items            Json     @default("[]")
+  approvedById     String?  @map("approved_by_id") @db.Uuid
+  returnDocRef     String?  @map("return_doc_ref")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@map("return_requests")
+}
+
