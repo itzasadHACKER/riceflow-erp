@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Package, Plus, ArrowUp, ArrowDown, AlertTriangle, RotateCcw, ShoppingBag, Trash2 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface BardanaTransaction {
   id: string;
@@ -39,6 +40,7 @@ interface BardanaSummary {
 }
 
 export default function BardanaPage() {
+  const token = useAuthStore((s) => s.token);
   const [transactions, setTransactions] = useState<BardanaTransaction[]>([]);
   const [summary, setSummary] = useState<BardanaSummary | null>(null);
   const [loading, setLoading] = useState(false);
@@ -60,10 +62,10 @@ export default function BardanaPage() {
     try {
       const [txRes, sumRes] = await Promise.all([
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/bardana`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+          headers: { Authorization: `Bearer ${token ?? ""}` },
         }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/bardana/summary`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+          headers: { Authorization: `Bearer ${token ?? ""}` },
         }),
       ]);
       const txData = await txRes.json();
@@ -79,7 +81,7 @@ export default function BardanaPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/bardana`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
         body: JSON.stringify({
           ...form,
           quantity: parseInt(form.quantity),

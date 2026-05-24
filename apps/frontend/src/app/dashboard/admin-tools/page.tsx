@@ -15,6 +15,7 @@ import { DataTable, type Column } from "@/components/shared/data-table";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { useApiList, useApiMutation } from "@/hooks/use-api";
+import { useAuthStore } from "@/stores/auth-store";
 import { toast } from "sonner";
 
 interface UDF { id: string; entityType: string; fieldName: string; fieldLabel: string; fieldType: string; isRequired: boolean; isActive: boolean; }
@@ -41,6 +42,7 @@ const DOC_TYPES = ["SALES_INVOICE", "PURCHASE_ORDER", "DELIVERY_CHALLAN", "CREDI
 const EXPORT_MODULES = ["customers", "suppliers", "chart-of-accounts", "journal-entries", "sales-invoices", "purchase-orders", "inventory-items", "employees"];
 
 export default function AdminToolsPage() {
+  const token = useAuthStore((s) => s.token);
   const [udfOpen, setUdfOpen] = useState(false);
   const [layoutOpen, setLayoutOpen] = useState(false);
   const [drEntity, setDrEntity] = useState("");
@@ -66,7 +68,7 @@ export default function AdminToolsPage() {
 
   const handleExport = () => {
     if (!exportModule) return;
-    const token = typeof window !== "undefined" ? localStorage.getItem("token") : "";
+
     const url = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}/admin-enhanced/export/${exportModule}`;
     window.open(url, "_blank");
     toast.success(`Exporting ${exportModule} data...`);

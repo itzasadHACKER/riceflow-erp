@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Weight, Plus, Printer, Search, Truck, ArrowDown } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface WeighbridgeSlip {
   id: string;
@@ -32,6 +33,7 @@ interface WeighbridgeSlip {
 }
 
 export default function WeighbridgePage() {
+  const token = useAuthStore((s) => s.token);
   const [slips, setSlips] = useState<WeighbridgeSlip[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchDate, setSearchDate] = useState(new Date().toISOString().split("T")[0]);
@@ -60,7 +62,7 @@ export default function WeighbridgePage() {
       if (searchVehicle) params.set("vehicleNumber", searchVehicle);
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/weighbridge?${params}`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` } }
+        { headers: { Authorization: `Bearer ${token ?? ""}` } }
       );
       const data = await res.json();
       setSlips(Array.isArray(data) ? data : []);
@@ -73,7 +75,7 @@ export default function WeighbridgePage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/weighbridge`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
         body: JSON.stringify({
           ...form,
           grossWeight: parseFloat(form.grossWeight),
@@ -93,7 +95,7 @@ export default function WeighbridgePage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/weighbridge/${tareSlipId}/tare`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
         body: JSON.stringify({ tareWeight: parseFloat(tareWeight) }),
       });
       if (res.ok) { loadSlips(); setTareSlipId(null); setTareWeight(""); }

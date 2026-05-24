@@ -14,6 +14,7 @@ import { DataTable, type Column } from "@/components/shared/data-table";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { useApiList, useApiMutation } from "@/hooks/use-api";
+import { useAuthStore } from "@/stores/auth-store";
 import { todayISO, formatCurrency, formatDate } from "@/lib/utils/numbering";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ const baColumns: Column<BlanketAgreement>[] = [
 ];
 
 export default function PurchaseEnhancedPage() {
+  const token = useAuthStore((s) => s.token);
   const [baOpen, setBaOpen] = useState(false);
   const [matchPoId, setMatchPoId] = useState("");
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
@@ -48,7 +50,7 @@ export default function PurchaseEnhancedPage() {
     if (!matchPoId) return;
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}/purchase-enhanced/three-way-match/${matchPoId}`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
       setMatchResult(data.data || data);

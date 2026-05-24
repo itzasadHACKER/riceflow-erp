@@ -40,8 +40,8 @@ export default function AssetsPage() {
   const { data: assets = [], isLoading } = useApiList<Asset>(["assets"], "/assets");
   const createMutation = useApiMutation<Asset, unknown>("/assets", "post", [["assets"]]);
 
-  const totalValue = assets.reduce((s, a) => s + Number(a.currentValue || 0), 0);
-  const totalCost = assets.reduce((s, a) => s + Number(a.purchaseValue || 0), 0);
+  const totalValue = (assets || []).reduce((s, a) => s + Number(a.currentValue || 0), 0);
+  const totalCost = (assets || []).reduce((s, a) => s + Number(a.purchaseValue || 0), 0);
 
   return (
     <div className="space-y-6">

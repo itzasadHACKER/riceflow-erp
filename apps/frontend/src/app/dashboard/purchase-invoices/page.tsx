@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { Plus, Trash2, Receipt } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface InvoiceItem {
   description: string;
@@ -35,6 +36,7 @@ interface PurchaseInvoice {
 }
 
 export default function PurchaseInvoicesPage() {
+  const token = useAuthStore((s) => s.token);
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -54,7 +56,7 @@ export default function PurchaseInvoicesPage() {
     setLoading(true);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/purchase-invoices`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { Authorization: `Bearer ${token ?? ""}` },
       });
       const data = await res.json();
       setInvoices(Array.isArray(data) ? data : []);
@@ -67,7 +69,7 @@ export default function PurchaseInvoicesPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/purchase-invoices`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
         body: JSON.stringify({
           ...form,
           discount: parseFloat(form.discount) || 0,

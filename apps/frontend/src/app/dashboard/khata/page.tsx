@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BookOpen, Search, Download, Printer, ArrowUpRight, ArrowDownRight, User } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface LedgerEntry {
   date: string;
@@ -32,6 +33,7 @@ interface KhataData {
 }
 
 export default function KhataPage() {
+  const token = useAuthStore((s) => s.token);
   const [partyType, setPartyType] = useState<string>("CUSTOMER");
   const [partyId, setPartyId] = useState("");
   const [fromDate, setFromDate] = useState("");
@@ -47,7 +49,7 @@ export default function KhataPage() {
       const endpoint = partyType === "CUSTOMER" ? "customers" : "procurement/suppliers";
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/${endpoint}?search=${encodeURIComponent(partySearch)}&limit=20`,
-        { headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` } }
+        { headers: { Authorization: `Bearer ${token ?? ""}` } }
       );
       const json = await res.json();
       setParties(json.data || []);
@@ -65,7 +67,7 @@ export default function KhataPage() {
       if (params.toString()) url += `?${params}`;
 
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token") ?? ""}` },
+        headers: { Authorization: `Bearer ${token ?? ""}` },
       });
       const data = await res.json();
       setKhataData(data);
