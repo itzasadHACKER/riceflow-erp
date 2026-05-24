@@ -889,4 +889,92 @@ export class HrService {
       orderBy: { settlementDate: 'desc' },
     });
   }
+
+  // ===================== EXPERIENCE LETTERS =====================
+
+  async createExperienceLetterTemplate(organizationId: string, data: { name: string; template: string; isDefault?: boolean }) {
+    if (data.isDefault) {
+      await this.prisma.experienceLetterTemplate.updateMany({
+        where: { organizationId },
+        data: { isDefault: false },
+      });
+    }
+    return this.prisma.experienceLetterTemplate.create({
+      data: {
+        organizationId,
+        name: data.name,
+        template: data.template,
+        isDefault: data.isDefault ?? false,
+      },
+    });
+  }
+
+  async getExperienceLetterTemplates(organizationId: string) {
+    return this.prisma.experienceLetterTemplate.findMany({
+      where: { organizationId },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async generateExperienceLetter(organizationId: string, employeeId: string, templateId?: string) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: employeeId, organizationId },
+      include: { user: true },
+    });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    const org = await this.prisma.organization.findUnique({ where: { id: organizationId } });
+    if (!org) throw new NotFoundException('Organization not found');
+
+    let template: string;
+    if (templateId) {
+      const tmpl = await this.prisma.experienceLetterTemplate.findFirst({ where: { id: templateId, organizationId } });
+      if (!tmpl) throw new NotFoundException('Template not found');
+      template = tmpl.template;
+    } else {
+      const defaultTmpl = await this.prisma.experienceLetterTemplate.findFirst({ where: { organizationId, isDefault: true } });
+      template = defaultTmpl?.template ?? this.getDefaultExperienceLetterTemplate();
+    }
+
+    const joiningDate = employee.joinDate ? new Date(employee.joinDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A';
+    const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const letter = template
+      .replace(/\{\{companyName\}\}/g, org.name)
+      .replace(/\{\{companyAddress\}\}/g, [org.address, org.city, org.state, org.country].filter(Boolean).join(', '))
+      .replace(/\{\{companyPhone\}\}/g, org.phone ?? '')
+      .replace(/\{\{companyEmail\}\}/g, org.email ?? '')
+      .replace(/\{\{employeeName\}\}/g, `${employee.user?.firstName ?? ''} ${employee.user?.lastName ?? ''}`)
+      .replace(/\{\{employeeId\}\}/g, employee.employeeCode)
+      .replace(/\{\{designation\}\}/g, employee.designation ?? 'N/A')
+      .replace(/\{\{department\}\}/g, employee.departmentId ?? 'N/A')
+      .replace(/\{\{joiningDate\}\}/g, joiningDate)
+      .replace(/\{\{currentDate\}\}/g, today)
+      .replace(/\{\{logoUrl\}\}/g, org.logoUrl ?? '');
+
+    return { letter, employee: { name: `${employee.user?.firstName ?? ''} ${employee.user?.lastName ?? ''}`, employeeCode: employee.employeeCode, designation: employee.designation }, organization: { name: org.name } };
+  }
+
+  private getDefaultExperienceLetterTemplate(): string {
+    return `
+EXPERIENCE LETTER
+
+Date: {{currentDate}}
+
+To Whom It May Concern,
+
+This is to certify that Mr./Ms. {{employeeName}} (Employee ID: {{employeeId}}) has worked with {{companyName}} as {{designation}} from {{joiningDate}} to {{currentDate}}.
+
+During the tenure, they have demonstrated excellent professional skills, dedication, and a strong work ethic. They were responsible, punctual, and maintained cordial relationships with colleagues and management.
+
+We wish them all the best in future endeavors.
+
+Sincerely,
+
+___________________________
+Authorized Signatory
+{{companyName}}
+{{companyAddress}}
+    `.trim();
+  }
 }

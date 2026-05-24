@@ -365,4 +365,73 @@ export class SettingsService {
       where: { organizationId, entityId },
     });
   }
+
+  // ===== COMPANY BRANDING =====
+
+  async updateCompanyBranding(organizationId: string, data: {
+    logoUrl?: string; letterheadUrl?: string; termsAndConditions?: string;
+  }) {
+    return this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        logoUrl: data.logoUrl,
+        letterheadUrl: data.letterheadUrl,
+        termsAndConditions: data.termsAndConditions,
+      },
+    });
+  }
+
+  async getCompanyBranding(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        id: true,
+        name: true,
+        logoUrl: true,
+        letterheadUrl: true,
+        termsAndConditions: true,
+        address: true,
+        city: true,
+        state: true,
+        country: true,
+        phone: true,
+        email: true,
+        website: true,
+        taxId: true,
+        currency: true,
+      },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    return org;
+  }
+
+  async getLicenseInfo() {
+    return {
+      software: 'Grainix ERP',
+      version: '1.0.0',
+      license: 'Proprietary - All Rights Reserved',
+      copyright: '(c) 2026 Grainix ERP. All rights reserved.',
+      poweredBy: 'Asad Ali',
+      contact: '0308-4420406',
+      description: 'Enterprise Rice Industry Management Platform',
+      features: [
+        'Multi-tenant SaaS Architecture',
+        'Multi-company Support',
+        'Strict Double-Entry Accounting',
+        'Real-time WebSocket Updates',
+        'Email & Communication System',
+        'Export with LC Management',
+        'Commission & Settlement System',
+        'Production & Milling Management',
+        'Inventory & Warehouse Management',
+        'HR & Payroll',
+        'CRM & Sales Force',
+        'Quality Control',
+        'Transport & Logistics',
+        'BI Reporting & Analytics',
+        'Document Management',
+        'Workflow & Approval Engine',
+      ],
+    };
+  }
 }

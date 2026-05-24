@@ -12,7 +12,7 @@ export default function Home() {
             <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <Wheat className="size-5" />
             </div>
-            <span className="text-xl font-bold">RiceFlow</span>
+            <span className="text-xl font-bold">Grainix</span>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -143,7 +143,7 @@ export default function Home() {
 
       <footer className="border-t bg-muted/30">
         <div className="container mx-auto flex items-center justify-between px-4 py-6 text-sm text-muted-foreground">
-          <span>© 2024 RiceFlow ERP. All rights reserved.</span>
+          <span>© 2026 Grainix ERP. All rights reserved. Powered by Asad Ali</span>
           <span>Built for the Rice Industry</span>
         </div>
       </footer>

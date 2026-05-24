@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Body,
   Param,
@@ -233,6 +234,29 @@ export class SettingsController {
   @ApiOperation({ summary: 'Get custom field values for entity' })
   async getCustomFieldValues(@CurrentUser() user: JwtPayload, @Query('entityId') entityId: string) {
     const result = await this.settingsService.getCustomFieldValues(user.organizationId, entityId);
+    return createResponse(result);
+  }
+
+  // ===== COMPANY BRANDING =====
+
+  @Put('branding')
+  @ApiOperation({ summary: 'Update company branding (logo, letterhead, terms)' })
+  async updateBranding(@CurrentUser() user: JwtPayload, @Body() body: { logoUrl?: string; letterheadUrl?: string; termsAndConditions?: string }) {
+    const result = await this.settingsService.updateCompanyBranding(user.organizationId, body);
+    return createResponse(result);
+  }
+
+  @Get('branding')
+  @ApiOperation({ summary: 'Get company branding info' })
+  async getBranding(@CurrentUser() user: JwtPayload) {
+    const result = await this.settingsService.getCompanyBranding(user.organizationId);
+    return createResponse(result);
+  }
+
+  @Get('license')
+  @ApiOperation({ summary: 'Get Grainix ERP license information' })
+  async getLicense() {
+    const result = await this.settingsService.getLicenseInfo();
     return createResponse(result);
   }
 }

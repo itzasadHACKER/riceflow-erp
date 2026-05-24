@@ -887,4 +887,128 @@ export class FinanceController {
     );
     return createResponse(result);
   }
+
+  // ===== CASH PAYMENT VOUCHERS =====
+
+  @Post('cash-payment-vouchers')
+  @ApiOperation({ summary: 'Create cash payment voucher' })
+  async createCashPaymentVoucher(@CurrentUser() user: JwtPayload, @Body() body: { paidTo: string; accountId: string; amount: number; narration?: string; reference?: string; date?: string }) {
+    const result = await this.financeService.createCashPaymentVoucher(user.organizationId, user.sub, body);
+    return createResponse(result);
+  }
+
+  @Get('cash-payment-vouchers')
+  @ApiOperation({ summary: 'List cash payment vouchers' })
+  async getCashPaymentVouchers(@CurrentUser() user: JwtPayload) {
+    const result = await this.financeService.getCashPaymentVouchers(user.organizationId);
+    return createResponse(result);
+  }
+
+  @Post('cash-payment-vouchers/:id/post')
+  @ApiOperation({ summary: 'Post cash payment voucher (creates journal entry, debits expense, credits cash)' })
+  async postCashPaymentVoucher(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.financeService.postCashPaymentVoucher(user.organizationId, id);
+    return createResponse(result);
+  }
+
+  // ===== CASH RECEIPT VOUCHERS =====
+
+  @Post('cash-receipt-vouchers')
+  @ApiOperation({ summary: 'Create cash receipt voucher' })
+  async createCashReceiptVoucher(@CurrentUser() user: JwtPayload, @Body() body: { receivedFrom: string; accountId: string; amount: number; narration?: string; reference?: string; date?: string }) {
+    const result = await this.financeService.createCashReceiptVoucher(user.organizationId, user.sub, body);
+    return createResponse(result);
+  }
+
+  @Get('cash-receipt-vouchers')
+  @ApiOperation({ summary: 'List cash receipt vouchers' })
+  async getCashReceiptVouchers(@CurrentUser() user: JwtPayload) {
+    const result = await this.financeService.getCashReceiptVouchers(user.organizationId);
+    return createResponse(result);
+  }
+
+  @Post('cash-receipt-vouchers/:id/post')
+  @ApiOperation({ summary: 'Post cash receipt voucher (creates journal entry, debits cash, credits income)' })
+  async postCashReceiptVoucher(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.financeService.postCashReceiptVoucher(user.organizationId, id);
+    return createResponse(result);
+  }
+
+  // ===== SALES RECEIPTS =====
+
+  @Post('sales-receipts')
+  @ApiOperation({ summary: 'Create sales receipt (CASH/CREDIT/POS/EXPORT/TAX_INVOICE/RETAIL)' })
+  async createSalesReceipt(@CurrentUser() user: JwtPayload, @Body() body: { customerId: string; invoiceType: string; items: object[]; subtotal: number; taxAmount?: number; discount?: number; totalAmount: number; paymentMethod?: string; narration?: string }) {
+    const result = await this.financeService.createSalesReceipt(user.organizationId, user.sub, body);
+    return createResponse(result);
+  }
+
+  @Get('sales-receipts')
+  @ApiOperation({ summary: 'List sales receipts' })
+  async getSalesReceipts(@CurrentUser() user: JwtPayload, @Query('invoiceType') invoiceType?: string) {
+    const result = await this.financeService.getSalesReceipts(user.organizationId, invoiceType);
+    return createResponse(result);
+  }
+
+  @Post('sales-receipts/:id/post')
+  @ApiOperation({ summary: 'Post sales receipt (auto-debits Cash in Hand)' })
+  async postSalesReceipt(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    const result = await this.financeService.postSalesReceipt(user.organizationId, id);
+    return createResponse(result);
+  }
+
+  // ===== CUSTOMER STATEMENTS =====
+
+  @Post('customer-statements/generate')
+  @ApiOperation({ summary: 'Generate customer statement' })
+  async generateCustomerStatement(@CurrentUser() user: JwtPayload, @Body() body: { customerId: string; fromDate: string; toDate: string }) {
+    const result = await this.financeService.generateCustomerStatement(user.organizationId, body.customerId, body.fromDate, body.toDate);
+    return createResponse(result);
+  }
+
+  @Get('customer-statements')
+  @ApiOperation({ summary: 'List customer statements' })
+  async getCustomerStatements(@CurrentUser() user: JwtPayload, @Query('customerId') customerId?: string) {
+    const result = await this.financeService.getCustomerStatements(user.organizationId, customerId);
+    return createResponse(result);
+  }
+
+  // ===== TERMS & CONDITIONS =====
+
+  @Post('terms-templates')
+  @ApiOperation({ summary: 'Create terms & conditions template' })
+  async createTermsTemplate(@CurrentUser() user: JwtPayload, @Body() body: { name: string; documentType: string; content: string; isDefault?: boolean }) {
+    const result = await this.financeService.createTermsTemplate(user.organizationId, body);
+    return createResponse(result);
+  }
+
+  @Get('terms-templates')
+  @ApiOperation({ summary: 'List terms templates' })
+  async getTermsTemplates(@CurrentUser() user: JwtPayload, @Query('documentType') documentType?: string) {
+    const result = await this.financeService.getTermsTemplates(user.organizationId, documentType);
+    return createResponse(result);
+  }
+
+  @Get('terms-templates/default/:documentType')
+  @ApiOperation({ summary: 'Get default terms for document type' })
+  async getDefaultTerms(@CurrentUser() user: JwtPayload, @Param('documentType') documentType: string) {
+    const result = await this.financeService.getDefaultTerms(user.organizationId, documentType);
+    return createResponse(result);
+  }
+
+  // ===== ENHANCED AGING REPORTS =====
+
+  @Get('receivables-aging')
+  @ApiOperation({ summary: 'Receivables aging report (Current/30/60/90/Over 90 days)' })
+  async getReceivablesAging(@CurrentUser() user: JwtPayload) {
+    const result = await this.financeService.getReceivablesAging(user.organizationId);
+    return createResponse(result);
+  }
+
+  @Get('payables-aging')
+  @ApiOperation({ summary: 'Payables aging report (Current/30/60/90/Over 90 days)' })
+  async getPayablesAging(@CurrentUser() user: JwtPayload) {
+    const result = await this.financeService.getPayablesAging(user.organizationId);
+    return createResponse(result);
+  }
 }

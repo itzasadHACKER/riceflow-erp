@@ -12,12 +12,12 @@ export default function AuthLayout({
           <div className="flex size-9 items-center justify-center rounded-lg bg-primary-foreground/20">
             <Wheat className="size-5" />
           </div>
-          <span className="text-xl font-bold">RiceFlow ERP</span>
+          <span className="text-xl font-bold">Grainix ERP</span>
         </div>
         <div>
           <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;RiceFlow has transformed how we manage our entire rice
+              &ldquo;Grainix has transformed how we manage our entire rice
               milling operation. From paddy procurement to export-quality
               grading, everything is in one place.&rdquo;
             </p>

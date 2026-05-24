@@ -57,7 +57,7 @@ export function RegisterForm() {
         <Input
           id="email"
           type="email"
-          placeholder="admin@riceflow.com"
+          placeholder="admin@grainix.com"
           required
           disabled={isLoading}
         />

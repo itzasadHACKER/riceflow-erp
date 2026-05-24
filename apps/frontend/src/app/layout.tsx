@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "RiceFlow ERP",
-    template: "%s | RiceFlow ERP",
+    default: "Grainix ERP",
+    template: "%s | Grainix ERP",
   },
   description:
     "Enterprise Rice Industry Management Platform — Procurement, Production, Inventory, Sales & Finance",

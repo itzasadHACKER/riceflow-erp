@@ -89,7 +89,7 @@ export function AppSidebar() {
                 <Wheat className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold">RiceFlow</span>
+                <span className="font-semibold">Grainix</span>
                 <span className="text-xs text-muted-foreground">
                   Enterprise ERP
                 </span>
@@ -161,7 +161,7 @@ export function AppSidebar() {
                   <div className="flex flex-col gap-0.5 leading-none">
                     <span className="font-medium text-sm">Admin User</span>
                     <span className="text-xs text-muted-foreground">
-                      admin@riceflow.com
+                      admin@grainix.com
                     </span>
                   </div>
                   <ChevronDown className="ml-auto size-4" />

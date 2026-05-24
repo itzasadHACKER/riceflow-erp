@@ -485,4 +485,33 @@ export class HrController {
     const result = await this.hrService.getFinalSettlements(user.organizationId);
     return createResponse(result);
   }
+
+  // ============================================================================
+  // EXPERIENCE LETTERS
+  // ============================================================================
+
+  @Post('experience-letter-templates')
+  @ApiOperation({ summary: 'Create experience letter template' })
+  async createExperienceLetterTemplate(@CurrentUser() user: JwtPayload, @Body() dto: { name: string; template: string; isDefault?: boolean }) {
+    const result = await this.hrService.createExperienceLetterTemplate(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('experience-letter-templates')
+  @ApiOperation({ summary: 'List experience letter templates' })
+  async getExperienceLetterTemplates(@CurrentUser() user: JwtPayload) {
+    const result = await this.hrService.getExperienceLetterTemplates(user.organizationId);
+    return createResponse(result);
+  }
+
+  @Post('experience-letters/generate/:employeeId')
+  @ApiOperation({ summary: 'Generate experience letter for employee' })
+  async generateExperienceLetter(
+    @CurrentUser() user: JwtPayload,
+    @Param('employeeId', ParseUUIDPipe) employeeId: string,
+    @Query('templateId') templateId?: string,
+  ) {
+    const result = await this.hrService.generateExperienceLetter(user.organizationId, employeeId, templateId);
+    return createResponse(result);
+  }
 }

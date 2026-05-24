@@ -130,6 +130,16 @@ model Organization {
   aiConversations    AiConversation[]
   integrationConfigs IntegrationConfig[]
   scheduledJobs      ScheduledJob[]
+  currency           String?          @default("PKR")
+  letterheadUrl      String?          @map("letterhead_url")
+  termsAndConditions String?          @map("terms_and_conditions") @db.Text
+  emailServerConfigs EmailServerConfig[]
+  emailMessages      EmailMessage[]
+  conversations      Conversation[]
+  contactGroups      ContactGroup[]
+  announcements      Announcement[]
+  setupProgress      SetupProgress[]
+  experienceLetters  ExperienceLetterTemplate[]
 
   @@map("organizations")
 }
@@ -208,6 +218,11 @@ model User {
   employee          Employee?
   auditLogs         AuditLog[]
   notifications     Notification[]
+  emailMessages           EmailMessage[]
+  conversationsCreated    Conversation[]              @relation("ConversationsCreated")
+  conversationParticipants ConversationParticipant[]
+  messagesSent            ConversationMessage[]       @relation("MessagesSent")
+  announcementsCreated    Announcement[]              @relation("AnnouncementsCreated")
 
   @@index([organizationId])
   @@index([email])
@@ -3272,4 +3287,305 @@ model ScheduledJob {
 
   @@index([organizationId])
   @@map("scheduled_jobs")
+}
+
+// ===================== EMAIL SYSTEM =====================
+
+model EmailServerConfig {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  serverType     String   @map("server_type") // SMTP, IMAP
+  host           String
+  port           Int
+  username       String
+  password       String
+  useSsl         Boolean  @default(false) @map("use_ssl")
+  useTls         Boolean  @default(true) @map("use_tls")
+  fromName       String?  @map("from_name")
+  fromEmail      String?  @map("from_email")
+  isActive       Boolean  @default(true) @map("is_active")
+  lastTestedAt   DateTime? @map("last_tested_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, serverType])
+  @@map("email_server_configs")
+}
+
+model EmailMessage {
+  id               String    @id @default(uuid()) @db.Uuid
+  organizationId   String    @map("organization_id") @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  folder           String    @default("INBOX") // INBOX, SENT, DRAFTS, TRASH, ARCHIVE
+  fromEmail        String    @map("from_email")
+  fromName         String?   @map("from_name")
+  toEmails         String[]  @map("to_emails")
+  ccEmails         String[]  @default([]) @map("cc_emails")
+  bccEmails        String[]  @default([]) @map("bcc_emails")
+  subject          String
+  body             String    @db.Text
+  isHtml           Boolean   @default(false) @map("is_html")
+  isRead           Boolean   @default(false) @map("is_read")
+  isStarred        Boolean   @default(false) @map("is_starred")
+  status           String    @default("RECEIVED") // RECEIVED, QUEUED, SENT, FAILED
+  sentAt           DateTime? @map("sent_at")
+  readAt           DateTime? @map("read_at")
+  linkedEntityType String?   @map("linked_entity_type")
+  linkedEntityId   String?   @map("linked_entity_id")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, folder])
+  @@index([organizationId, status])
+  @@map("email_messages")
+}
+
+// ===================== COMMUNICATION SYSTEM =====================
+
+model Conversation {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  subject          String
+  channel          String   @default("INTERNAL") // EMAIL, WHATSAPP, SMS, INTERNAL
+  createdById      String   @map("created_by_id") @db.Uuid
+  linkedEntityType String?  @map("linked_entity_type")
+  linkedEntityId   String?  @map("linked_entity_id")
+  isClosed         Boolean  @default(false) @map("is_closed")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User                   @relation("ConversationsCreated", fields: [createdById], references: [id])
+  participants ConversationParticipant[]
+  messages     ConversationMessage[]
+
+  @@index([organizationId])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  role           String   @default("PARTICIPANT") // OWNER, PARTICIPANT
+  joinedAt       DateTime @default(now()) @map("joined_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model ConversationMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  senderId       String   @map("sender_id") @db.Uuid
+  content        String   @db.Text
+  isHtml         Boolean  @default(false) @map("is_html")
+  attachments    String[] @default([])
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation("MessagesSent", fields: [senderId], references: [id])
+
+  @@index([conversationId])
+  @@map("conversation_messages")
+}
+
+model ContactGroup {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  createdById    String   @map("created_by_id") @db.Uuid
+  contacts       String[] @default([])
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("contact_groups")
+}
+
+// ===================== ANNOUNCEMENTS =====================
+
+model Announcement {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  createdById       String    @map("created_by_id") @db.Uuid
+  title             String
+  content           String    @db.Text
+  priority          String    @default("MEDIUM") // LOW, MEDIUM, HIGH, CRITICAL
+  isPinned          Boolean   @default(false) @map("is_pinned")
+  isPublished       Boolean   @default(true) @map("is_published")
+  expiresAt         DateTime? @map("expires_at")
+  targetDepartments String[]  @default([]) @map("target_departments")
+  targetRoles       String[]  @default([]) @map("target_roles")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  organization    Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy       User                        @relation("AnnouncementsCreated", fields: [createdById], references: [id])
+  acknowledgments AnnouncementAcknowledgment[]
+
+  @@index([organizationId, isPublished])
+  @@map("announcements")
+}
+
+model AnnouncementAcknowledgment {
+  id             String   @id @default(uuid()) @db.Uuid
+  announcementId String   @map("announcement_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  acknowledgedAt DateTime @default(now()) @map("acknowledged_at")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@map("announcement_acknowledgments")
+}
+
+// ===================== SETUP WIZARD =====================
+
+model SetupProgress {
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  stepKey        String    @map("step_key")
+  completedById  String    @map("completed_by_id") @db.Uuid
+  completedAt    DateTime  @default(now()) @map("completed_at")
+  data           Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, stepKey])
+  @@map("setup_progress")
+}
+
+// ===================== EXPERIENCE LETTER TEMPLATES =====================
+
+model ExperienceLetterTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  template       String   @db.Text
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("experience_letter_templates")
+}
+
+// ===================== TERMS AND CONDITIONS =====================
+
+model TermsTemplate {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  documentType   String   @map("document_type") // INVOICE, QUOTATION, PURCHASE_ORDER, BILL
+  content        String   @db.Text
+  isDefault      Boolean  @default(false) @map("is_default")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId, documentType])
+  @@map("terms_templates")
+}
+
+// ===================== CASH VOUCHERS =====================
+
+model CashPaymentVoucher {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  voucherNumber  String   @map("voucher_number")
+  date           DateTime @default(now())
+  paidTo         String   @map("paid_to")
+  accountId      String   @map("account_id") @db.Uuid
+  amount         Decimal  @db.Decimal(18, 4)
+  narration      String?
+  reference      String?
+  isPosted       Boolean  @default(false) @map("is_posted")
+  journalEntryId String?  @map("journal_entry_id") @db.Uuid
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("cash_payment_vouchers")
+}
+
+model CashReceiptVoucher {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  voucherNumber  String   @map("voucher_number")
+  date           DateTime @default(now())
+  receivedFrom   String   @map("received_from")
+  accountId      String   @map("account_id") @db.Uuid
+  amount         Decimal  @db.Decimal(18, 4)
+  narration      String?
+  reference      String?
+  isPosted       Boolean  @default(false) @map("is_posted")
+  journalEntryId String?  @map("journal_entry_id") @db.Uuid
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("cash_receipt_vouchers")
+}
+
+// ===================== SALES RECEIPT =====================
+
+model SalesReceipt {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  receiptNumber  String   @map("receipt_number")
+  date           DateTime @default(now())
+  customerId     String   @map("customer_id") @db.Uuid
+  invoiceType    String   @default("CASH") @map("invoice_type") // CASH, CREDIT, POS, EXPORT, TAX_INVOICE, RETAIL
+  items          Json     @default("[]")
+  subtotal       Decimal  @db.Decimal(18, 4)
+  taxAmount      Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  discount       Decimal  @default(0) @db.Decimal(18, 4)
+  totalAmount    Decimal  @map("total_amount") @db.Decimal(18, 4)
+  amountPaid     Decimal  @default(0) @map("amount_paid") @db.Decimal(18, 4)
+  paymentMethod  String   @default("CASH") @map("payment_method") // CASH, BANK, CHEQUE, ONLINE
+  narration      String?
+  isPosted       Boolean  @default(false) @map("is_posted")
+  journalEntryId String?  @map("journal_entry_id") @db.Uuid
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  @@index([organizationId])
+  @@map("sales_receipts")
+}
+
+// ===================== CUSTOMER STATEMENT =====================
+
+model CustomerStatement {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  customerId     String   @map("customer_id") @db.Uuid
+  fromDate       DateTime @map("from_date")
+  toDate         DateTime @map("to_date")
+  openingBalance Decimal  @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  closingBalance Decimal  @default(0) @map("closing_balance") @db.Decimal(18, 4)
+  totalDebit     Decimal  @default(0) @map("total_debit") @db.Decimal(18, 4)
+  totalCredit    Decimal  @default(0) @map("total_credit") @db.Decimal(18, 4)
+  entries        Json     @default("[]")
+  generatedAt    DateTime @default(now()) @map("generated_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, customerId])
+  @@map("customer_statements")
 }

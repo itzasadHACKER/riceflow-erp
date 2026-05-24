@@ -2396,4 +2396,344 @@ export class FinanceService {
         .toString(),
     };
   }
+
+  // ===================== CASH VOUCHERS =====================
+
+  async createCashPaymentVoucher(organizationId: string, userId: string, data: {
+    paidTo: string; accountId: string; amount: number; narration?: string; reference?: string; date?: string;
+  }) {
+    const voucherNumber = `CPV-${Date.now()}`;
+    return this.prisma.cashPaymentVoucher.create({
+      data: {
+        organizationId,
+        voucherNumber,
+        date: data.date ? new Date(data.date) : new Date(),
+        paidTo: data.paidTo,
+        accountId: data.accountId,
+        amount: new Prisma.Decimal(data.amount),
+        narration: data.narration,
+        reference: data.reference,
+        createdById: userId,
+      },
+    });
+  }
+
+  async getCashPaymentVouchers(organizationId: string) {
+    return this.prisma.cashPaymentVoucher.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async postCashPaymentVoucher(organizationId: string, id: string) {
+    const voucher = await this.prisma.cashPaymentVoucher.findFirst({ where: { id, organizationId } });
+    if (!voucher) throw new NotFoundException('Cash payment voucher not found');
+    if (voucher.isPosted) throw new BadRequestException('Voucher already posted');
+
+    const cashAccount = await this.prisma.chartOfAccount.findFirst({
+      where: { organizationId, code: '1110' },
+    });
+    if (!cashAccount) throw new BadRequestException('Cash in Hand account not found. Please seed Chart of Accounts first.');
+
+    const fiscalYear = await this.prisma.fiscalYear.findFirst({
+      where: { organizationId, isActive: true },
+    });
+    if (!fiscalYear) throw new BadRequestException('No active fiscal year');
+
+    const je = await this.prisma.journalEntry.create({
+      data: {
+        organizationId,
+        fiscalYearId: fiscalYear.id,
+        entryNumber: `JE-CPV-${Date.now()}`,
+        date: voucher.date,
+        reference: voucher.voucherNumber,
+        narration: `Cash Payment: ${voucher.paidTo} - ${voucher.narration ?? ''}`,
+        isPosted: true,
+        postedAt: new Date(),
+        lines: {
+          create: [
+            { accountId: voucher.accountId, debit: voucher.amount, credit: new Prisma.Decimal(0), narration: voucher.narration ?? '' },
+            { accountId: cashAccount.id, debit: new Prisma.Decimal(0), credit: voucher.amount, narration: `Cash paid to ${voucher.paidTo}` },
+          ],
+        },
+      },
+    });
+
+    await this.prisma.cashPaymentVoucher.update({
+      where: { id },
+      data: { isPosted: true, journalEntryId: je.id },
+    });
+
+    return { voucher: { ...voucher, isPosted: true }, journalEntryId: je.id };
+  }
+
+  async createCashReceiptVoucher(organizationId: string, userId: string, data: {
+    receivedFrom: string; accountId: string; amount: number; narration?: string; reference?: string; date?: string;
+  }) {
+    const voucherNumber = `CRV-${Date.now()}`;
+    return this.prisma.cashReceiptVoucher.create({
+      data: {
+        organizationId,
+        voucherNumber,
+        date: data.date ? new Date(data.date) : new Date(),
+        receivedFrom: data.receivedFrom,
+        accountId: data.accountId,
+        amount: new Prisma.Decimal(data.amount),
+        narration: data.narration,
+        reference: data.reference,
+        createdById: userId,
+      },
+    });
+  }
+
+  async getCashReceiptVouchers(organizationId: string) {
+    return this.prisma.cashReceiptVoucher.findMany({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async postCashReceiptVoucher(organizationId: string, id: string) {
+    const voucher = await this.prisma.cashReceiptVoucher.findFirst({ where: { id, organizationId } });
+    if (!voucher) throw new NotFoundException('Cash receipt voucher not found');
+    if (voucher.isPosted) throw new BadRequestException('Voucher already posted');
+
+    const cashAccount = await this.prisma.chartOfAccount.findFirst({
+      where: { organizationId, code: '1110' },
+    });
+    if (!cashAccount) throw new BadRequestException('Cash in Hand account not found');
+
+    const fiscalYear = await this.prisma.fiscalYear.findFirst({
+      where: { organizationId, isActive: true },
+    });
+    if (!fiscalYear) throw new BadRequestException('No active fiscal year');
+
+    const je = await this.prisma.journalEntry.create({
+      data: {
+        organizationId,
+        fiscalYearId: fiscalYear.id,
+        entryNumber: `JE-CRV-${Date.now()}`,
+        date: voucher.date,
+        reference: voucher.voucherNumber,
+        narration: `Cash Receipt: ${voucher.receivedFrom} - ${voucher.narration ?? ''}`,
+        isPosted: true,
+        postedAt: new Date(),
+        lines: {
+          create: [
+            { accountId: cashAccount.id, debit: voucher.amount, credit: new Prisma.Decimal(0), narration: `Cash received from ${voucher.receivedFrom}` },
+            { accountId: voucher.accountId, debit: new Prisma.Decimal(0), credit: voucher.amount, narration: voucher.narration ?? '' },
+          ],
+        },
+      },
+    });
+
+    await this.prisma.cashReceiptVoucher.update({
+      where: { id },
+      data: { isPosted: true, journalEntryId: je.id },
+    });
+
+    return { voucher: { ...voucher, isPosted: true }, journalEntryId: je.id };
+  }
+
+  // ===================== SALES RECEIPTS =====================
+
+  async createSalesReceipt(organizationId: string, userId: string, data: {
+    customerId: string; invoiceType: string; items: object[]; subtotal: number; taxAmount?: number; discount?: number; totalAmount: number; paymentMethod?: string; narration?: string;
+  }) {
+    const receiptNumber = `SR-${Date.now()}`;
+    return this.prisma.salesReceipt.create({
+      data: {
+        organizationId,
+        receiptNumber,
+        customerId: data.customerId,
+        invoiceType: data.invoiceType ?? 'CASH',
+        items: data.items as Prisma.InputJsonValue,
+        subtotal: new Prisma.Decimal(data.subtotal),
+        taxAmount: new Prisma.Decimal(data.taxAmount ?? 0),
+        discount: new Prisma.Decimal(data.discount ?? 0),
+        totalAmount: new Prisma.Decimal(data.totalAmount),
+        amountPaid: new Prisma.Decimal(data.totalAmount),
+        paymentMethod: data.paymentMethod ?? 'CASH',
+        narration: data.narration,
+        createdById: userId,
+      },
+    });
+  }
+
+  async getSalesReceipts(organizationId: string, invoiceType?: string) {
+    const where: Prisma.SalesReceiptWhereInput = { organizationId };
+    if (invoiceType) where.invoiceType = invoiceType;
+    return this.prisma.salesReceipt.findMany({ where, orderBy: { createdAt: 'desc' } });
+  }
+
+  async postSalesReceipt(organizationId: string, id: string) {
+    const receipt = await this.prisma.salesReceipt.findFirst({ where: { id, organizationId } });
+    if (!receipt) throw new NotFoundException('Sales receipt not found');
+    if (receipt.isPosted) throw new BadRequestException('Receipt already posted');
+
+    const cashAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1110' } });
+    const salesAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '4100' } });
+    if (!cashAccount || !salesAccount) throw new BadRequestException('Required accounts not found');
+
+    const fiscalYear = await this.prisma.fiscalYear.findFirst({ where: { organizationId, isActive: true } });
+    if (!fiscalYear) throw new BadRequestException('No active fiscal year');
+
+    const je = await this.prisma.journalEntry.create({
+      data: {
+        organizationId,
+        fiscalYearId: fiscalYear.id,
+        entryNumber: `JE-SR-${Date.now()}`,
+        date: receipt.date,
+        reference: receipt.receiptNumber,
+        narration: `Sales Receipt ${receipt.receiptNumber} - ${receipt.invoiceType}`,
+        isPosted: true,
+        postedAt: new Date(),
+        lines: {
+          create: [
+            { accountId: cashAccount.id, debit: receipt.totalAmount, credit: new Prisma.Decimal(0), narration: `Cash sales ${receipt.receiptNumber}` },
+            { accountId: salesAccount.id, debit: new Prisma.Decimal(0), credit: receipt.totalAmount, narration: `Sales revenue ${receipt.receiptNumber}` },
+          ],
+        },
+      },
+    });
+
+    await this.prisma.salesReceipt.update({
+      where: { id },
+      data: { isPosted: true, journalEntryId: je.id },
+    });
+
+    return { receipt: { ...receipt, isPosted: true }, journalEntryId: je.id };
+  }
+
+  // ===================== CUSTOMER STATEMENT =====================
+
+  async generateCustomerStatement(organizationId: string, customerId: string, fromDate: string, toDate: string) {
+    const customer = await this.prisma.customer.findFirst({ where: { id: customerId, organizationId } });
+    if (!customer) throw new NotFoundException('Customer not found');
+
+    const invoices = await this.prisma.salesInvoice.findMany({
+      where: { organizationId, customerId, date: { gte: new Date(fromDate), lte: new Date(toDate) } },
+      orderBy: { date: 'asc' },
+    });
+
+    let balance = new Prisma.Decimal(0);
+    const entries = invoices.map((inv) => {
+      balance = balance.add(inv.totalAmount);
+      return {
+        date: inv.date,
+        reference: inv.invoiceNumber,
+        description: `Invoice ${inv.invoiceNumber}`,
+        debit: inv.totalAmount.toString(),
+        credit: '0',
+        balance: balance.toString(),
+      };
+    });
+
+    return this.prisma.customerStatement.create({
+      data: {
+        organizationId,
+        customerId,
+        fromDate: new Date(fromDate),
+        toDate: new Date(toDate),
+        openingBalance: new Prisma.Decimal(0),
+        closingBalance: balance,
+        totalDebit: balance,
+        totalCredit: new Prisma.Decimal(0),
+        entries: entries as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async getCustomerStatements(organizationId: string, customerId?: string) {
+    const where: Prisma.CustomerStatementWhereInput = { organizationId };
+    if (customerId) where.customerId = customerId;
+    return this.prisma.customerStatement.findMany({ where, orderBy: { generatedAt: 'desc' } });
+  }
+
+  // ===================== TERMS & CONDITIONS =====================
+
+  async createTermsTemplate(organizationId: string, data: {
+    name: string; documentType: string; content: string; isDefault?: boolean;
+  }) {
+    if (data.isDefault) {
+      await this.prisma.termsTemplate.updateMany({
+        where: { organizationId, documentType: data.documentType },
+        data: { isDefault: false },
+      });
+    }
+    return this.prisma.termsTemplate.create({
+      data: {
+        organizationId,
+        name: data.name,
+        documentType: data.documentType,
+        content: data.content,
+        isDefault: data.isDefault ?? false,
+      },
+    });
+  }
+
+  async getTermsTemplates(organizationId: string, documentType?: string) {
+    const where: Prisma.TermsTemplateWhereInput = { organizationId };
+    if (documentType) where.documentType = documentType;
+    return this.prisma.termsTemplate.findMany({ where, orderBy: { name: 'asc' } });
+  }
+
+  async getDefaultTerms(organizationId: string, documentType: string) {
+    return this.prisma.termsTemplate.findFirst({
+      where: { organizationId, documentType, isDefault: true },
+    });
+  }
+
+  // ===================== ENHANCED RECEIVABLES/PAYABLES =====================
+
+  async getReceivablesAging(organizationId: string) {
+    const invoices = await this.prisma.salesInvoice.findMany({
+      where: { organizationId, paymentStatus: { not: 'PAID' } },
+      include: { customer: { select: { id: true, name: true } } },
+    });
+
+    const now = new Date();
+    const aging = { current: new Prisma.Decimal(0), days30: new Prisma.Decimal(0), days60: new Prisma.Decimal(0), days90: new Prisma.Decimal(0), over90: new Prisma.Decimal(0) };
+    const customerAging: Record<string, { name: string; current: string; days30: string; days60: string; days90: string; over90: string; total: string }> = {};
+
+    for (const inv of invoices) {
+      const days = Math.floor((now.getTime() - inv.date.getTime()) / (1000 * 60 * 60 * 24));
+      const bucket = days <= 0 ? 'current' : days <= 30 ? 'days30' : days <= 60 ? 'days60' : days <= 90 ? 'days90' : 'over90';
+      aging[bucket] = aging[bucket].add(inv.totalAmount);
+
+      const custId = inv.customerId;
+      if (!customerAging[custId]) {
+        customerAging[custId] = { name: inv.customer.name, current: '0', days30: '0', days60: '0', days90: '0', over90: '0', total: '0' };
+      }
+      const ca = customerAging[custId];
+      ca[bucket] = new Prisma.Decimal(ca[bucket]).add(inv.totalAmount).toString();
+      ca.total = new Prisma.Decimal(ca.total).add(inv.totalAmount).toString();
+    }
+
+    return {
+      summary: { current: aging.current.toString(), days30: aging.days30.toString(), days60: aging.days60.toString(), days90: aging.days90.toString(), over90: aging.over90.toString(),
+        total: aging.current.add(aging.days30).add(aging.days60).add(aging.days90).add(aging.over90).toString() },
+      customers: Object.values(customerAging),
+    };
+  }
+
+  async getPayablesAging(organizationId: string) {
+    const purchases = await this.prisma.paddyPurchase.findMany({
+      where: { organizationId, paymentStatus: { not: 'PAID' } },
+    });
+
+    const now = new Date();
+    const aging = { current: new Prisma.Decimal(0), days30: new Prisma.Decimal(0), days60: new Prisma.Decimal(0), days90: new Prisma.Decimal(0), over90: new Prisma.Decimal(0) };
+
+    for (const pur of purchases) {
+      const days = Math.floor((now.getTime() - pur.date.getTime()) / (1000 * 60 * 60 * 24));
+      const bucket = days <= 0 ? 'current' : days <= 30 ? 'days30' : days <= 60 ? 'days60' : days <= 90 ? 'days90' : 'over90';
+      aging[bucket] = aging[bucket].add(pur.netAmount);
+    }
+
+    return {
+      summary: { current: aging.current.toString(), days30: aging.days30.toString(), days60: aging.days60.toString(), days90: aging.days90.toString(), over90: aging.over90.toString(),
+        total: aging.current.add(aging.days30).add(aging.days60).add(aging.days90).add(aging.over90).toString() },
+    };
+  }
 }

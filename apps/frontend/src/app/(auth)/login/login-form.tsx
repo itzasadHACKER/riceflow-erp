@@ -28,7 +28,7 @@ export function LoginForm() {
         <Input
           id="email"
           type="email"
-          placeholder="admin@riceflow.com"
+          placeholder="admin@grainix.com"
           required
           disabled={isLoading}
         />

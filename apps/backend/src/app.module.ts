@@ -31,6 +31,11 @@ import { CommissionModule } from './modules/commission/commission.module';
 import { MarketIntelligenceModule } from './modules/market-intelligence/market-intelligence.module';
 import { ExportSalesModule } from './modules/export-sales/export-sales.module';
 import { IntegrationModule } from './modules/integration/integration.module';
+import { EmailModule } from './modules/email/email.module';
+import { CommunicationModule } from './modules/communication/communication.module';
+import { AnnouncementModule } from './modules/announcement/announcement.module';
+import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
+import { WebSocketModule } from './modules/websocket/websocket.module';
 
 @Module({
   imports: [
@@ -74,6 +79,11 @@ import { IntegrationModule } from './modules/integration/integration.module';
     MarketIntelligenceModule,
     ExportSalesModule,
     IntegrationModule,
+    EmailModule,
+    CommunicationModule,
+    AnnouncementModule,
+    SetupWizardModule,
+    WebSocketModule,
   ],
 })
 export class AppModule {}
