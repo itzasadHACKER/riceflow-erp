@@ -33,6 +33,7 @@ interface AuthState {
     firstName: string;
     lastName: string;
     organizationName: string;
+    defaultCurrency?: string;
   }) => Promise<void>;
   logout: () => void;
   clearError: () => void;

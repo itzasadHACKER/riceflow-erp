@@ -7,6 +7,39 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuthStore } from "@/stores/auth-store";
 
+const CURRENCIES = [
+  { code: "PKR", name: "Pakistani Rupee", symbol: "₨" },
+  { code: "USD", name: "US Dollar", symbol: "$" },
+  { code: "EUR", name: "Euro", symbol: "€" },
+  { code: "GBP", name: "British Pound", symbol: "£" },
+  { code: "AED", name: "UAE Dirham", symbol: "د.إ" },
+  { code: "SAR", name: "Saudi Riyal", symbol: "﷼" },
+  { code: "INR", name: "Indian Rupee", symbol: "₹" },
+  { code: "CNY", name: "Chinese Yuan", symbol: "¥" },
+  { code: "JPY", name: "Japanese Yen", symbol: "¥" },
+  { code: "CAD", name: "Canadian Dollar", symbol: "C$" },
+  { code: "AUD", name: "Australian Dollar", symbol: "A$" },
+  { code: "BDT", name: "Bangladeshi Taka", symbol: "৳" },
+  { code: "MYR", name: "Malaysian Ringgit", symbol: "RM" },
+  { code: "THB", name: "Thai Baht", symbol: "฿" },
+  { code: "TRY", name: "Turkish Lira", symbol: "₺" },
+  { code: "KWD", name: "Kuwaiti Dinar", symbol: "د.ك" },
+  { code: "QAR", name: "Qatari Riyal", symbol: "﷼" },
+  { code: "OMR", name: "Omani Rial", symbol: "﷼" },
+  { code: "BHD", name: "Bahraini Dinar", symbol: ".د.ب" },
+  { code: "NGN", name: "Nigerian Naira", symbol: "₦" },
+  { code: "ZAR", name: "South African Rand", symbol: "R" },
+  { code: "EGP", name: "Egyptian Pound", symbol: "£" },
+  { code: "KES", name: "Kenyan Shilling", symbol: "KSh" },
+  { code: "BRL", name: "Brazilian Real", symbol: "R$" },
+  { code: "MXN", name: "Mexican Peso", symbol: "$" },
+  { code: "SGD", name: "Singapore Dollar", symbol: "S$" },
+  { code: "HKD", name: "Hong Kong Dollar", symbol: "HK$" },
+  { code: "CHF", name: "Swiss Franc", symbol: "CHF" },
+  { code: "SEK", name: "Swedish Krona", symbol: "kr" },
+  { code: "NOK", name: "Norwegian Krone", symbol: "kr" },
+];
+
 export function RegisterForm() {
   const router = useRouter();
   const { register, isLoading, error, clearError } = useAuthStore();
@@ -16,6 +49,7 @@ export function RegisterForm() {
     lastName: "",
     email: "",
     password: "",
+    defaultCurrency: "PKR",
   });
 
   function updateField(field: string, value: string) {
@@ -105,6 +139,25 @@ export function RegisterForm() {
           value={formData.password}
           onChange={(e) => updateField("password", e.target.value)}
         />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="currency">Default Currency</Label>
+        <select
+          id="currency"
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          disabled={isLoading}
+          value={formData.defaultCurrency}
+          onChange={(e) => updateField("defaultCurrency", e.target.value)}
+        >
+          {CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>
+              {c.symbol} {c.code} — {c.name}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          This currency will be used as the base currency throughout the software for all financial transactions, invoices, and reports.
+        </p>
       </div>
       <Button type="submit" className="w-full" disabled={isLoading}>
         {isLoading ? "Creating account..." : "Create Account"}

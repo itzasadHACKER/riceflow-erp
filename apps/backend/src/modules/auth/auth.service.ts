@@ -48,6 +48,7 @@ export class AuthService {
         data: {
           name: dto.organizationName,
           slug,
+          currency: dto.defaultCurrency || 'PKR',
         },
       });
 
