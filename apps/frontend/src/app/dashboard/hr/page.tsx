@@ -1,17 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Users, Clock, CalendarDays, Banknote, FileText } from "lucide-react";
+import { Users, Clock, CalendarDays, Banknote, Plus } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { PageHeader } from "@/components/shared/page-header";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { useApiList, useApiMutation } from "@/hooks/use-api";
+import { generateNumber, todayISO, formatCurrency, formatDate } from "@/lib/utils/numbering";
+import { toast } from "sonner";
 
 interface Employee {
   id: string;
@@ -29,7 +33,7 @@ interface Employee {
 
 interface LeaveRequest {
   id: string;
-  employeeId: string;
+  employeeName: string;
   leaveType: string;
   startDate: string;
   endDate: string;
@@ -39,7 +43,7 @@ interface LeaveRequest {
 
 interface SalarySlip {
   id: string;
-  employeeId: string;
+  employeeName: string;
   month: number;
   year: number;
   baseSalary: string;
@@ -48,144 +52,119 @@ interface SalarySlip {
 }
 
 const employeeColumns: Column<Employee>[] = [
-  { key: "employeeCode", header: "Code" },
-  { key: "firstName", header: "First Name" },
-  { key: "lastName", header: "Last Name" },
+  { key: "employeeCode", header: "Code", render: (item) => <span className="font-mono font-medium text-primary">{item.employeeCode}</span> },
+  { key: "firstName", header: "Name", render: (item) => <span className="font-medium">{item.firstName} {item.lastName}</span> },
   { key: "email", header: "Email" },
   { key: "designation", header: "Designation" },
-  {
-    key: "baseSalary",
-    header: "Base Salary",
-    render: (item) =>
-      Number(item.baseSalary).toLocaleString("en-PK", { style: "currency", currency: "PKR" }),
-  },
+  { key: "baseSalary", header: "Salary", className: "text-right", render: (item) => <span className="font-mono">{formatCurrency(item.baseSalary)}</span> },
+  { key: "joinDate", header: "Join Date", render: (item) => formatDate(item.joinDate) },
   {
     key: "status",
     header: "Status",
-    render: (item) => (
-      <Badge variant={item.status === "ACTIVE" ? "default" : "secondary"}>
-        {item.status}
-      </Badge>
-    ),
+    render: (item) => {
+      const colors: Record<string, string> = { ACTIVE: "bg-emerald-600", INACTIVE: "", ON_LEAVE: "bg-amber-600", TERMINATED: "bg-red-600" };
+      return <Badge variant={item.status === "ACTIVE" ? "default" : "secondary"} className={colors[item.status] ?? ""}>{item.status}</Badge>;
+    },
   },
 ];
 
 const leaveColumns: Column<LeaveRequest>[] = [
-  { key: "leaveType", header: "Type" },
-  {
-    key: "startDate",
-    header: "From",
-    render: (item) => new Date(item.startDate).toLocaleDateString(),
-  },
-  {
-    key: "endDate",
-    header: "To",
-    render: (item) => new Date(item.endDate).toLocaleDateString(),
-  },
-  { key: "reason", header: "Reason" },
+  { key: "employeeName", header: "Employee" },
+  { key: "leaveType", header: "Type", render: (item) => <Badge variant="outline">{item.leaveType}</Badge> },
+  { key: "startDate", header: "From", render: (item) => formatDate(item.startDate) },
+  { key: "endDate", header: "To", render: (item) => formatDate(item.endDate) },
   {
     key: "status",
     header: "Status",
-    render: (item) => (
-      <Badge
-        variant={
-          item.status === "APPROVED"
-            ? "default"
-            : item.status === "REJECTED"
-              ? "destructive"
-              : "secondary"
-        }
-      >
-        {item.status}
-      </Badge>
-    ),
+    render: (item) => {
+      const variant = item.status === "APPROVED" ? "default" : item.status === "REJECTED" ? "destructive" : "secondary";
+      return <Badge variant={variant} className={item.status === "APPROVED" ? "bg-emerald-600" : ""}>{item.status}</Badge>;
+    },
   },
 ];
 
 const salaryColumns: Column<SalarySlip>[] = [
-  { key: "month", header: "Month" },
-  { key: "year", header: "Year" },
-  {
-    key: "baseSalary",
-    header: "Base Salary",
-    render: (item) => Number(item.baseSalary).toLocaleString("en-PK", { style: "currency", currency: "PKR" }),
-  },
-  {
-    key: "netSalary",
-    header: "Net Salary",
-    render: (item) => Number(item.netSalary).toLocaleString("en-PK", { style: "currency", currency: "PKR" }),
-  },
+  { key: "employeeName", header: "Employee" },
+  { key: "month", header: "Period", render: (item) => `${String(item.month).padStart(2, "0")}/${item.year}` },
+  { key: "baseSalary", header: "Base", className: "text-right", render: (item) => <span className="font-mono">{formatCurrency(item.baseSalary)}</span> },
+  { key: "netSalary", header: "Net Pay", className: "text-right", render: (item) => <span className="font-mono font-semibold">{formatCurrency(item.netSalary)}</span> },
   {
     key: "status",
     header: "Status",
-    render: (item) => <Badge variant={item.status === "PAID" ? "default" : "secondary"}>{item.status}</Badge>,
+    render: (item) => {
+      const colors: Record<string, string> = { DRAFT: "", CONFIRMED: "bg-blue-600", PAID: "bg-emerald-600" };
+      return <Badge variant={item.status === "DRAFT" ? "secondary" : "default"} className={colors[item.status] ?? ""}>{item.status}</Badge>;
+    },
   },
 ];
 
 export default function HRPage() {
   const [showCreateEmployee, setShowCreateEmployee] = useState(false);
   const [empForm, setEmpForm] = useState({
-    employeeCode: "",
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    designation: "",
-    baseSalary: "",
-    joinDate: new Date().toISOString().split("T")[0],
+    firstName: "", lastName: "", email: "", phone: "", designation: "",
+    baseSalary: "", joinDate: todayISO(), cnic: "", address: "",
   });
 
-  const { data: employees = [], isLoading: empLoading } =
-    useApiList<Employee>(["employees"], "/hr/employees");
-  const { data: leaves = [], isLoading: leavesLoading } =
-    useApiList<LeaveRequest>(["leaves"], "/hr/leaves");
-  const { data: salarySlips = [], isLoading: salaryLoading } =
-    useApiList<SalarySlip>(["salary-slips"], "/hr/salary-slips");
+  const { data: employees = [], isLoading: empLoading } = useApiList<Employee>(["employees"], "/hr/employees");
+  const { data: leaves = [], isLoading: leaveLoading } = useApiList<LeaveRequest>(["leaves"], "/hr/leaves");
+  const { data: salaries = [], isLoading: salaryLoading } = useApiList<SalarySlip>(["salary-slips"], "/hr/salary-slips");
 
-  const createEmpMutation = useApiMutation<Employee, unknown>(
-    "/hr/employees",
-    "post",
-    [["employees"]]
-  );
+  const createEmpMutation = useApiMutation<Employee, unknown>("/hr/employees", "post", [["employees"]]);
+
+  const totalPayroll = employees.reduce((s, e) => s + Number(e.baseSalary || 0), 0);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="HR & Payroll" description="Manage employees, attendance, leaves, and payroll" />
+      <PageHeader title="HR & Payroll" description="Employee management, attendance, leave tracking, and payroll processing" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Total Employees" value={employees.length} icon={Users} description="Active workforce" />
+        <StatCard title="Employees" value={employees.length} icon={Users} description={`${employees.filter((e) => e.status === "ACTIVE").length} active`} />
         <StatCard title="Leave Requests" value={leaves.length} icon={CalendarDays} description={`${leaves.filter((l) => l.status === "PENDING").length} pending`} />
-        <StatCard title="Salary Slips" value={salarySlips.length} icon={Banknote} description="This period" />
-        <StatCard title="Attendance" value="—" icon={Clock} description="Today's records" />
+        <StatCard title="Salary Slips" value={salaries.length} icon={Banknote} description={`${salaries.filter((s) => s.status === "PAID").length} paid`} />
+        <StatCard title="Monthly Payroll" value={formatCurrency(totalPayroll)} icon={Clock} />
       </div>
 
       <Tabs defaultValue="employees">
-        <TabsList>
-          <TabsTrigger value="employees"><Users className="mr-2 size-4" />Employees</TabsTrigger>
-          <TabsTrigger value="leaves"><CalendarDays className="mr-2 size-4" />Leaves</TabsTrigger>
-          <TabsTrigger value="payroll"><Banknote className="mr-2 size-4" />Payroll</TabsTrigger>
-          <TabsTrigger value="attendance"><Clock className="mr-2 size-4" />Attendance</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="employees" className="gap-1.5"><Users className="size-3.5" />Employees</TabsTrigger>
+          <TabsTrigger value="leaves" className="gap-1.5"><CalendarDays className="size-3.5" />Leave</TabsTrigger>
+          <TabsTrigger value="payroll" className="gap-1.5"><Banknote className="size-3.5" />Payroll</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="employees" className="space-y-4">
-          <Button onClick={() => setShowCreateEmployee(true)}>+ New Employee</Button>
-          <DataTable columns={employeeColumns} data={employees as unknown as Employee[]} isLoading={empLoading} emptyMessage="No employees found." />
+        <TabsContent value="employees" className="space-y-4 mt-4">
+          <DataTable
+            columns={employeeColumns}
+            data={employees as unknown as Employee[]}
+            isLoading={empLoading}
+            emptyMessage="No employees yet."
+            searchPlaceholder="Search employees..."
+            actions={
+              <Button size="sm" className="gap-1.5" onClick={() => setShowCreateEmployee(true)}>
+                <Plus className="size-3.5" />
+                New Employee
+              </Button>
+            }
+          />
         </TabsContent>
 
-        <TabsContent value="leaves" className="space-y-4">
-          <DataTable columns={leaveColumns} data={leaves as unknown as LeaveRequest[]} isLoading={leavesLoading} emptyMessage="No leave requests." />
+        <TabsContent value="leaves" className="space-y-4 mt-4">
+          <DataTable
+            columns={leaveColumns}
+            data={leaves as unknown as LeaveRequest[]}
+            isLoading={leaveLoading}
+            emptyMessage="No leave requests."
+            searchPlaceholder="Search requests..."
+          />
         </TabsContent>
 
-        <TabsContent value="payroll" className="space-y-4">
-          <DataTable columns={salaryColumns} data={salarySlips as unknown as SalarySlip[]} isLoading={salaryLoading} emptyMessage="No salary slips generated." />
-        </TabsContent>
-
-        <TabsContent value="attendance" className="space-y-4">
-          <div className="rounded-md border p-8 text-center text-muted-foreground">
-            <Clock className="mx-auto mb-3 size-10" />
-            <p className="font-medium">Attendance Tracking</p>
-            <p className="text-sm">Record and view employee attendance here.</p>
-          </div>
+        <TabsContent value="payroll" className="space-y-4 mt-4">
+          <DataTable
+            columns={salaryColumns}
+            data={salaries as unknown as SalarySlip[]}
+            isLoading={salaryLoading}
+            emptyMessage="No salary slips generated."
+            searchPlaceholder="Search payroll..."
+          />
         </TabsContent>
       </Tabs>
 
@@ -193,27 +172,69 @@ export default function HRPage() {
         open={showCreateEmployee}
         onOpenChange={setShowCreateEmployee}
         title="Add Employee"
+        description={`Employee # ${generateNumber("employee", employees.length)}`}
+        size="lg"
         onSubmit={(e) => {
           e.preventDefault();
           createEmpMutation.mutate(
             { ...empForm, baseSalary: Number(empForm.baseSalary) },
-            { onSuccess: () => { setShowCreateEmployee(false); setEmpForm({ employeeCode: "", firstName: "", lastName: "", email: "", phone: "", designation: "", baseSalary: "", joinDate: new Date().toISOString().split("T")[0] }); } }
+            {
+              onSuccess: () => {
+                setShowCreateEmployee(false);
+                toast.success("Employee added successfully");
+                setEmpForm({ firstName: "", lastName: "", email: "", phone: "", designation: "", baseSalary: "", joinDate: todayISO(), cnic: "", address: "" });
+              },
+            }
           );
         }}
         isLoading={createEmpMutation.isPending}
+        submitLabel="Add Employee"
       >
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>Employee Code</Label><Input value={empForm.employeeCode} onChange={(e) => setEmpForm((p) => ({ ...p, employeeCode: e.target.value }))} required placeholder="EMP-001" /></div>
-          <div className="space-y-2"><Label>Join Date</Label><Input type="date" value={empForm.joinDate} onChange={(e) => setEmpForm((p) => ({ ...p, joinDate: e.target.value }))} required /></div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">First Name</Label>
+            <Input value={empForm.firstName} onChange={(e) => setEmpForm((p) => ({ ...p, firstName: e.target.value }))} required />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Last Name</Label>
+            <Input value={empForm.lastName} onChange={(e) => setEmpForm((p) => ({ ...p, lastName: e.target.value }))} required />
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>First Name</Label><Input value={empForm.firstName} onChange={(e) => setEmpForm((p) => ({ ...p, firstName: e.target.value }))} required /></div>
-          <div className="space-y-2"><Label>Last Name</Label><Input value={empForm.lastName} onChange={(e) => setEmpForm((p) => ({ ...p, lastName: e.target.value }))} required /></div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Email</Label>
+            <Input type="email" value={empForm.email} onChange={(e) => setEmpForm((p) => ({ ...p, email: e.target.value }))} required placeholder="email@company.com" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Phone</Label>
+            <Input value={empForm.phone} onChange={(e) => setEmpForm((p) => ({ ...p, phone: e.target.value }))} placeholder="+92-300-0000000" />
+          </div>
         </div>
-        <div className="space-y-2"><Label>Email</Label><Input type="email" value={empForm.email} onChange={(e) => setEmpForm((p) => ({ ...p, email: e.target.value }))} required /></div>
-        <div className="space-y-2"><Label>Phone</Label><Input value={empForm.phone} onChange={(e) => setEmpForm((p) => ({ ...p, phone: e.target.value }))} /></div>
-        <div className="space-y-2"><Label>Designation</Label><Input value={empForm.designation} onChange={(e) => setEmpForm((p) => ({ ...p, designation: e.target.value }))} required /></div>
-        <div className="space-y-2"><Label>Base Salary (PKR)</Label><Input type="number" value={empForm.baseSalary} onChange={(e) => setEmpForm((p) => ({ ...p, baseSalary: e.target.value }))} required placeholder="0" /></div>
+        <Separator />
+        <div className="grid grid-cols-3 gap-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Designation</Label>
+            <Input value={empForm.designation} onChange={(e) => setEmpForm((p) => ({ ...p, designation: e.target.value }))} required placeholder="e.g. Mill Operator" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Base Salary (PKR)</Label>
+            <Input type="number" min="0" value={empForm.baseSalary} onChange={(e) => setEmpForm((p) => ({ ...p, baseSalary: e.target.value }))} required placeholder="0" className="font-mono" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Join Date</Label>
+            <Input type="date" value={empForm.joinDate} onChange={(e) => setEmpForm((p) => ({ ...p, joinDate: e.target.value }))} required />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">CNIC</Label>
+            <Input value={empForm.cnic} onChange={(e) => setEmpForm((p) => ({ ...p, cnic: e.target.value }))} placeholder="00000-0000000-0" className="font-mono" />
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs font-semibold uppercase tracking-wider">Address</Label>
+            <Input value={empForm.address} onChange={(e) => setEmpForm((p) => ({ ...p, address: e.target.value }))} placeholder="Full address" />
+          </div>
+        </div>
       </FormDialog>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Cog, Wrench, AlertTriangle, Activity } from "lucide-react";
+import { Cog, Wrench, AlertTriangle, Plus, Gauge } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,83 +12,95 @@ import { DataTable, type Column } from "@/components/shared/data-table";
 import { FormDialog } from "@/components/shared/form-dialog";
 import { StatCard } from "@/components/shared/stat-card";
 import { useApiList, useApiMutation } from "@/hooks/use-api";
+import { todayISO, formatDate } from "@/lib/utils/numbering";
+import { toast } from "sonner";
 
-interface Machine { id: string; name: string; code: string; type: string; manufacturer: string; status: string; location: string; }
-interface MaintenanceLog { id: string; machineId: string; type: string; description: string; date: string; cost: string; status: string; }
-interface SparePart { id: string; name: string; partNumber: string; quantity: number; reorderLevel: number; unitCost: string; }
+interface Machine { id: string; name: string; code: string; type: string; location: string; status: string; }
+interface MaintenanceLog { id: string; machineName: string; type: string; date: string; description: string; cost: number; status: string; }
 
 const machineColumns: Column<Machine>[] = [
-  { key: "code", header: "Code" },
-  { key: "name", header: "Name" },
+  { key: "code", header: "Code", render: (item) => <span className="font-mono font-medium text-primary">{item.code}</span> },
+  { key: "name", header: "Machine Name" },
   { key: "type", header: "Type", render: (item) => <Badge variant="outline">{item.type}</Badge> },
-  { key: "manufacturer", header: "Manufacturer" },
   { key: "location", header: "Location" },
-  { key: "status", header: "Status", render: (item) => <Badge variant={item.status === "OPERATIONAL" ? "default" : item.status === "BREAKDOWN" ? "destructive" : "secondary"}>{item.status}</Badge> },
+  {
+    key: "status",
+    header: "Status",
+    render: (item) => {
+      const colors: Record<string, string> = { OPERATIONAL: "bg-emerald-600", MAINTENANCE: "bg-amber-600", BREAKDOWN: "bg-red-600", IDLE: "" };
+      return <Badge variant={item.status === "IDLE" ? "secondary" : "default"} className={colors[item.status] ?? ""}>{item.status}</Badge>;
+    },
+  },
 ];
 
 const maintenanceColumns: Column<MaintenanceLog>[] = [
-  { key: "type", header: "Type", render: (item) => <Badge variant="outline">{item.type}</Badge> },
-  { key: "description", header: "Description" },
-  { key: "date", header: "Date", render: (item) => new Date(item.date).toLocaleDateString() },
-  { key: "cost", header: "Cost", render: (item) => Number(item.cost).toLocaleString("en-PK", { style: "currency", currency: "PKR" }) },
-  { key: "status", header: "Status", render: (item) => <Badge variant={item.status === "COMPLETED" ? "default" : "secondary"}>{item.status}</Badge> },
-];
-
-const spareColumns: Column<SparePart>[] = [
-  { key: "partNumber", header: "Part #" },
-  { key: "name", header: "Name" },
-  { key: "quantity", header: "Qty" },
-  { key: "reorderLevel", header: "Reorder Level" },
-  { key: "unitCost", header: "Unit Cost", render: (item) => Number(item.unitCost).toLocaleString("en-PK", { style: "currency", currency: "PKR" }) },
+  { key: "machineName", header: "Machine" },
+  { key: "type", header: "Type", render: (item) => {
+    const c: Record<string, string> = { PREVENTIVE: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200", CORRECTIVE: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200", BREAKDOWN: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200" };
+    return <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${c[item.type] ?? ""}`}>{item.type}</span>;
+  }},
+  { key: "date", header: "Date", render: (item) => formatDate(item.date) },
+  { key: "description", header: "Description", render: (item) => <span className="max-w-[200px] truncate block">{item.description}</span> },
+  {
+    key: "status",
+    header: "Status",
+    render: (item) => <Badge variant={item.status === "COMPLETED" ? "default" : "secondary"} className={item.status === "COMPLETED" ? "bg-emerald-600" : ""}>{item.status}</Badge>,
+  },
 ];
 
 export default function MachinesPage() {
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ name: "", code: "", type: "MILLING", manufacturer: "", location: "" });
+  const [form, setForm] = useState({ name: "", code: "", type: "SHELLER", location: "" });
 
-  const { data: machines = [], isLoading: machLoading } = useApiList<Machine>(["machines"], "/machines");
-  const { data: maintenance = [], isLoading: maintLoading } = useApiList<MaintenanceLog>(["maintenance"], "/machines/maintenance");
-  const { data: spares = [], isLoading: spareLoading } = useApiList<SparePart>(["spares"], "/machines/spare-parts");
-
+  const { data: machines = [], isLoading: mLoading } = useApiList<Machine>(["machines"], "/machines");
+  const { data: logs = [], isLoading: lLoading } = useApiList<MaintenanceLog>(["maintenance-logs"], "/machines/maintenance");
   const createMutation = useApiMutation<Machine, typeof form>("/machines", "post", [["machines"]]);
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Machine Management" description="Machines, maintenance, spare parts, and OEE tracking" />
+      <PageHeader title="Machine Management" description="Machines, maintenance schedules, spare parts, and OEE tracking" />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard title="Machines" value={machines.length} icon={Cog} />
-        <StatCard title="Maintenance" value={maintenance.length} icon={Wrench} />
-        <StatCard title="Spare Parts" value={spares.length} icon={AlertTriangle} />
-        <StatCard title="OEE" value="—" icon={Activity} description="Overall Equipment Effectiveness" />
+        <StatCard title="Machines" value={machines.length} icon={Cog} description={`${machines.filter((m) => m.status === "OPERATIONAL").length} operational`} />
+        <StatCard title="Maintenance Logs" value={logs.length} icon={Wrench} />
+        <StatCard title="Breakdowns" value={machines.filter((m) => m.status === "BREAKDOWN").length} icon={AlertTriangle} />
+        <StatCard title="OEE" value="—" icon={Gauge} description="Overall Equipment Effectiveness" />
       </div>
 
       <Tabs defaultValue="machines">
-        <TabsList>
-          <TabsTrigger value="machines"><Cog className="mr-2 size-4" />Machines</TabsTrigger>
-          <TabsTrigger value="maintenance"><Wrench className="mr-2 size-4" />Maintenance</TabsTrigger>
-          <TabsTrigger value="spares"><AlertTriangle className="mr-2 size-4" />Spare Parts</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
+          <TabsTrigger value="machines" className="gap-1.5"><Cog className="size-3.5" />Machines</TabsTrigger>
+          <TabsTrigger value="maintenance" className="gap-1.5"><Wrench className="size-3.5" />Maintenance</TabsTrigger>
         </TabsList>
-        <TabsContent value="machines" className="space-y-4">
-          <Button onClick={() => setShowCreate(true)}>+ New Machine</Button>
-          <DataTable columns={machineColumns} data={machines as unknown as Machine[]} isLoading={machLoading} />
+        <TabsContent value="machines" className="space-y-4 mt-4">
+          <DataTable
+            columns={machineColumns}
+            data={machines as unknown as Machine[]}
+            isLoading={mLoading}
+            emptyMessage="No machines registered."
+            searchPlaceholder="Search machines..."
+            actions={
+              <Button size="sm" className="gap-1.5" onClick={() => setShowCreate(true)}>
+                <Plus className="size-3.5" />
+                New Machine
+              </Button>
+            }
+          />
         </TabsContent>
-        <TabsContent value="maintenance" className="space-y-4">
-          <DataTable columns={maintenanceColumns} data={maintenance as unknown as MaintenanceLog[]} isLoading={maintLoading} />
-        </TabsContent>
-        <TabsContent value="spares" className="space-y-4">
-          <DataTable columns={spareColumns} data={spares as unknown as SparePart[]} isLoading={spareLoading} />
+        <TabsContent value="maintenance" className="space-y-4 mt-4">
+          <DataTable columns={maintenanceColumns} data={logs as unknown as MaintenanceLog[]} isLoading={lLoading} emptyMessage="No maintenance logs." searchPlaceholder="Search logs..." />
         </TabsContent>
       </Tabs>
 
-      <FormDialog open={showCreate} onOpenChange={setShowCreate} title="Add Machine" onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form, { onSuccess: () => { setShowCreate(false); setForm({ name: "", code: "", type: "MILLING", manufacturer: "", location: "" }); } }); }} isLoading={createMutation.isPending}>
+      <FormDialog open={showCreate} onOpenChange={setShowCreate} title="Add Machine" onSubmit={(e) => { e.preventDefault(); createMutation.mutate(form, { onSuccess: () => { setShowCreate(false); toast.success("Machine added"); setForm({ name: "", code: "", type: "SHELLER", location: "" }); } }); }} isLoading={createMutation.isPending}>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2"><Label>Code</Label><Input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} required placeholder="MCH-001" /></div>
-          <div className="space-y-2"><Label>Type</Label><select className="w-full rounded-md border px-3 py-2 text-sm" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}><option value="MILLING">Milling</option><option value="SORTING">Sorting</option><option value="PACKAGING">Packaging</option><option value="DRYING">Drying</option></select></div>
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider">Code</Label><Input value={form.code} onChange={(e) => setForm((p) => ({ ...p, code: e.target.value }))} required placeholder="e.g. MCH-001" className="font-mono" /></div>
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider">Name</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required /></div>
         </div>
-        <div className="space-y-2"><Label>Name</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required /></div>
-        <div className="space-y-2"><Label>Manufacturer</Label><Input value={form.manufacturer} onChange={(e) => setForm((p) => ({ ...p, manufacturer: e.target.value }))} /></div>
-        <div className="space-y-2"><Label>Location</Label><Input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} /></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider">Type</Label><select className="w-full rounded-md border bg-background px-3 py-2 text-sm" value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}><option value="SHELLER">Sheller</option><option value="WHITENER">Whitener</option><option value="POLISHER">Polisher</option><option value="GRADER">Grader</option><option value="COLOR_SORTER">Color Sorter</option><option value="PACKING">Packing</option></select></div>
+          <div className="space-y-2"><Label className="text-xs font-semibold uppercase tracking-wider">Location</Label><Input value={form.location} onChange={(e) => setForm((p) => ({ ...p, location: e.target.value }))} placeholder="e.g. Mill Floor 1" /></div>
+        </div>
       </FormDialog>
     </div>
   );

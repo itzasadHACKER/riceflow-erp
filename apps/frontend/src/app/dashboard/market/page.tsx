@@ -6,16 +6,16 @@ import { PageHeader } from "@/components/shared/page-header";
 import { DataTable, type Column } from "@/components/shared/data-table";
 import { StatCard } from "@/components/shared/stat-card";
 import { useApiList } from "@/hooks/use-api";
+import { formatCurrency, formatDate } from "@/lib/utils/numbering";
 
-interface MarketRate { id: string; commodity: string; market: string; rate: number; unit: string; date: string; trend: string; }
+interface MarketRate { id: string; commodity: string; market: string; rate: number; date: string; unit: string; }
 
 const rateColumns: Column<MarketRate>[] = [
   { key: "commodity", header: "Commodity" },
-  { key: "market", header: "Market" },
-  { key: "rate", header: "Rate", render: (item) => Number(item.rate).toLocaleString("en-PK", { style: "currency", currency: "PKR" }) },
+  { key: "market", header: "Market", render: (item) => <Badge variant="outline">{item.market}</Badge> },
+  { key: "rate", header: "Rate", className: "text-right", render: (item) => <span className="font-mono font-semibold">{formatCurrency(item.rate)}</span> },
   { key: "unit", header: "Unit" },
-  { key: "date", header: "Date", render: (item) => new Date(item.date).toLocaleDateString() },
-  { key: "trend", header: "Trend", render: (item) => <Badge variant={item.trend === "UP" ? "default" : item.trend === "DOWN" ? "destructive" : "secondary"}>{item.trend}</Badge> },
+  { key: "date", header: "Date", render: (item) => formatDate(item.date) },
 ];
 
 export default function MarketPage() {
@@ -23,14 +23,13 @@ export default function MarketPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Market Intelligence" description="Commodity rates, price trends, and market analysis" />
-
-      <div className="grid gap-4 sm:grid-cols-2">
+      <PageHeader title="Market Intelligence" description="Market rates, commodity trends, and seasonal analytics" />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard title="Market Rates" value={rates.length} icon={TrendingUp} />
-        <StatCard title="Analytics" value="Available" icon={BarChart3} />
+        <StatCard title="Commodities" value={new Set(rates.map((r) => r.commodity)).size} icon={BarChart3} />
+        <StatCard title="Markets" value={new Set(rates.map((r) => r.market)).size} icon={TrendingUp} />
       </div>
-
-      <DataTable columns={rateColumns} data={rates as unknown as MarketRate[]} isLoading={isLoading} emptyMessage="No market rates recorded." />
+      <DataTable columns={rateColumns} data={rates as unknown as MarketRate[]} isLoading={isLoading} emptyMessage="No market rates available." searchPlaceholder="Search rates..." />
     </div>
   );
 }
