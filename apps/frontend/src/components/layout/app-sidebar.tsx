@@ -305,12 +305,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/dashboard" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
                 <Wheat className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-semibold">Grainix</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-xs opacity-60">
                   Enterprise ERP
                 </span>
               </div>
@@ -396,7 +396,7 @@ export function AppSidebar() {
                 className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] h-12 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 data-[popup-open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
               >
                   <Avatar className="size-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
