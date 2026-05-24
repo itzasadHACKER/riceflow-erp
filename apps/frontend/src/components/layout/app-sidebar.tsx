@@ -57,6 +57,9 @@ import {
   FileCheck,
   FileSpreadsheet,
   ShieldCheck,
+  BookOpen,
+  Weight,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -138,6 +141,7 @@ const moduleNav: NavSection[] = [
           { title: "Assets", href: "/dashboard/assets", icon: Building },
           { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
           { title: "Credit Notes & Returns", href: "/dashboard/credit-notes", icon: ArrowDownCircle },
+          { title: "Party Khata / Ledger", href: "/dashboard/khata", icon: BookOpen },
         ],
       },
       {
@@ -185,6 +189,7 @@ const moduleNav: NavSection[] = [
         icon: Wheat,
         items: [
           { title: "Purchase Orders", href: "/dashboard/procurement", icon: Wheat },
+          { title: "Purchase Invoices", href: "/dashboard/purchase-invoices", icon: Receipt },
           { title: "Requisitions & RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake },
           { title: "3-Way Match & More", href: "/dashboard/purchase-enhanced", icon: FileCheck },
         ],
@@ -211,6 +216,8 @@ const moduleNav: NavSection[] = [
         items: [
           { title: "Transport", href: "/dashboard/transport", icon: Truck },
           { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
+          { title: "Weighbridge", href: "/dashboard/weighbridge", icon: Weight },
+          { title: "Bardana (Bags)", href: "/dashboard/bardana", icon: Package },
         ],
       },
     ],
