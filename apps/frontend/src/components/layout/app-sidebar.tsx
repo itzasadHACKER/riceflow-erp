@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   LayoutDashboard,
@@ -17,6 +17,18 @@ import {
   Bot,
   Settings,
   ChevronDown,
+  Building,
+  FlaskConical,
+  Receipt,
+  Globe,
+  GitBranch,
+  Cog,
+  FileText,
+  DollarSign,
+  Percent,
+  TrendingUp,
+  Landmark,
+  LogOut,
 } from "lucide-react";
 import {
   Sidebar,
@@ -38,6 +50,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuthStore } from "@/stores/auth-store";
 
 const mainNav = [
   {
@@ -53,16 +66,35 @@ const moduleNav = [
     items: [
       { title: "Organization", href: "/dashboard/organization", icon: Building2 },
       { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
+      { title: "Workflow", href: "/dashboard/workflow", icon: GitBranch },
     ],
   },
   {
-    label: "Business",
+    label: "Finance",
     items: [
       { title: "Finance", href: "/dashboard/finance", icon: Wallet },
+      { title: "Expense", href: "/dashboard/expense", icon: Receipt },
+      { title: "Bank", href: "/dashboard/bank", icon: Landmark },
+      { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
+      { title: "Assets", href: "/dashboard/assets", icon: Building },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
       { title: "Procurement", href: "/dashboard/procurement", icon: Wheat },
       { title: "Production", href: "/dashboard/production", icon: Factory },
       { title: "Inventory", href: "/dashboard/inventory", icon: Warehouse },
+      { title: "Machines", href: "/dashboard/machines", icon: Cog },
+      { title: "Quality", href: "/dashboard/quality-control", icon: FlaskConical },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
       { title: "Sales", href: "/dashboard/sales", icon: ShoppingCart },
+      { title: "Export Sales", href: "/dashboard/export-sales", icon: Globe },
+      { title: "Commissions", href: "/dashboard/commissions", icon: Percent },
       { title: "Transport", href: "/dashboard/transport", icon: Truck },
     ],
   },
@@ -71,6 +103,8 @@ const moduleNav = [
     items: [
       { title: "CRM", href: "/dashboard/crm", icon: UserSearch },
       { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+      { title: "Market", href: "/dashboard/market", icon: TrendingUp },
+      { title: "Documents", href: "/dashboard/documents", icon: FileText },
       { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
     ],
   },
@@ -78,6 +112,12 @@ const moduleNav = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
+    : "GX";
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -155,13 +195,15 @@ export function AppSidebar() {
                 >
                   <Avatar className="size-8">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      RF
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-medium text-sm">Admin User</span>
+                    <span className="font-medium text-sm">
+                      {user ? `${user.firstName} ${user.lastName}` : "Admin User"}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      admin@grainix.com
+                      {user?.email ?? "admin@grainix.com"}
                     </span>
                   </div>
                   <ChevronDown className="ml-auto size-4" />
@@ -178,7 +220,15 @@ export function AppSidebar() {
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Sign out</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    router.push("/login");
+                  }}
+                >
+                  <LogOut className="mr-2 size-4" />
+                  Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
