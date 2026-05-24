@@ -29,6 +29,10 @@ import {
   TrendingUp,
   Landmark,
   LogOut,
+  DoorOpen,
+  Layers,
+  UserCheck,
+  Tag,
 } from "lucide-react";
 import {
   Sidebar,
@@ -87,6 +91,8 @@ const moduleNav = [
       { title: "Inventory", href: "/dashboard/inventory", icon: Warehouse },
       { title: "Machines", href: "/dashboard/machines", icon: Cog },
       { title: "Quality", href: "/dashboard/quality-control", icon: FlaskConical },
+      { title: "BOM", href: "/dashboard/bom", icon: Layers },
+      { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
     ],
   },
   {
@@ -94,6 +100,7 @@ const moduleNav = [
     items: [
       { title: "Sales", href: "/dashboard/sales", icon: ShoppingCart },
       { title: "Export Sales", href: "/dashboard/export-sales", icon: Globe },
+      { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
       { title: "Commissions", href: "/dashboard/commissions", icon: Percent },
       { title: "Transport", href: "/dashboard/transport", icon: Truck },
     ],
@@ -106,6 +113,7 @@ const moduleNav = [
       { title: "Market", href: "/dashboard/market", icon: TrendingUp },
       { title: "Documents", href: "/dashboard/documents", icon: FileText },
       { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+      { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
     ],
   },
 ];
@@ -188,11 +196,9 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent"
-                >
+              <DropdownMenuTrigger
+                className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] h-12 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 data-[popup-open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
+              >
                   <Avatar className="size-8">
                     <AvatarFallback className="bg-primary text-primary-foreground text-xs">
                       {initials}
@@ -207,7 +213,6 @@ export function AppSidebar() {
                     </span>
                   </div>
                   <ChevronDown className="ml-auto size-4" />
-                </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="w-56"

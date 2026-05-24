@@ -23,6 +23,10 @@ import {
   TrendingUp,
   Bot,
   ArrowRight,
+  DoorOpen,
+  Layers,
+  UserCheck,
+  Tag,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,6 +66,10 @@ const quickLinks = [
   { title: "Documents", href: "/dashboard/documents", icon: FileText, desc: "DMS" },
   { title: "Market", href: "/dashboard/market", icon: TrendingUp, desc: "Rates & Trends" },
   { title: "AI", href: "/dashboard/ai", icon: Bot, desc: "Smart Assistant" },
+  { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen, desc: "In/Out/Visitors" },
+  { title: "BOM", href: "/dashboard/bom", icon: Layers, desc: "Bill of Materials" },
+  { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck, desc: "Sales Team" },
+  { title: "Categories", href: "/dashboard/product-categories", icon: Tag, desc: "Product Types" },
 ];
 
 export default function DashboardPage() {

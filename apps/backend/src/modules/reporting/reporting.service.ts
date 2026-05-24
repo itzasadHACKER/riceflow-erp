@@ -1001,4 +1001,136 @@ export class ReportingService {
     }
     return counts;
   }
+
+  private getDateRange(period: string, fromDate?: string, toDate?: string): { start: Date; end: Date } {
+    const now = new Date();
+    let start: Date;
+    let end = now;
+
+    switch (period) {
+      case 'daily':
+        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        break;
+      case 'weekly':
+        start = new Date(now);
+        start.setDate(start.getDate() - 7);
+        break;
+      case 'mtd':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        break;
+      case 'monthly':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        break;
+      case 'ytd':
+        start = new Date(now.getFullYear(), 0, 1);
+        break;
+      case 'yearly':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31);
+        break;
+      case 'custom':
+        start = fromDate ? new Date(fromDate) : new Date(now.getFullYear(), now.getMonth(), 1);
+        end = toDate ? new Date(toDate) : now;
+        break;
+      default:
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+    }
+    return { start, end };
+  }
+
+  async getExpenseReport(organizationId: string, period: string, fromDate?: string, toDate?: string) {
+    const { start, end } = this.getDateRange(period, fromDate, toDate);
+
+    const expenses = await this.prisma.expenseClaim.findMany({
+      where: { organizationId, createdAt: { gte: start, lte: end } },
+    });
+
+    const totalAmount = expenses.reduce((s, e) => s + Number(e.totalAmount), 0);
+    const byStatus: Record<string, number> = {};
+    for (const e of expenses) {
+      byStatus[e.status] = (byStatus[e.status] ?? 0) + Number(e.totalAmount);
+    }
+
+    return { period, startDate: start, endDate: end, totalExpenses: expenses.length, totalAmount, byStatus };
+  }
+
+  async getGatePassReport(organizationId: string, period: string, fromDate?: string, toDate?: string) {
+    const { start, end } = this.getDateRange(period, fromDate, toDate);
+
+    const [total, outgoing, incoming, visitor] = await Promise.all([
+      this.prisma.gatePass.count({ where: { organizationId, date: { gte: start, lte: end } } }),
+      this.prisma.gatePass.count({ where: { organizationId, type: 'OUTGOING', date: { gte: start, lte: end } } }),
+      this.prisma.gatePass.count({ where: { organizationId, type: 'INCOMING', date: { gte: start, lte: end } } }),
+      this.prisma.gatePass.count({ where: { organizationId, type: 'VISITOR', date: { gte: start, lte: end } } }),
+    ]);
+
+    return { period, startDate: start, endDate: end, total, outgoing, incoming, visitor };
+  }
+
+  async getAssetReport(organizationId: string) {
+    const assets = await this.prisma.fixedAsset.findMany({ where: { organizationId } });
+    const totalCost = assets.reduce((s, a) => s + Number(a.purchasePrice), 0);
+    const totalBookValue = assets.reduce((s, a) => s + Number(a.currentValue), 0);
+    const totalDepreciation = totalCost - totalBookValue;
+    const byStatus: Record<string, number> = {};
+    for (const a of assets) {
+      byStatus[a.status] = (byStatus[a.status] ?? 0) + 1;
+    }
+    return { totalAssets: assets.length, totalCost, totalBookValue, totalDepreciation, byStatus };
+  }
+
+  async getCrmReport(organizationId: string, period: string, fromDate?: string, toDate?: string) {
+    const { start, end } = this.getDateRange(period, fromDate, toDate);
+
+    const [newLeads, wonLeads, totalMeetings, totalFollowUps] = await Promise.all([
+      this.prisma.lead.count({ where: { organizationId, createdAt: { gte: start, lte: end } } }),
+      this.prisma.lead.count({ where: { organizationId, status: 'WON', updatedAt: { gte: start, lte: end } } }),
+      this.prisma.meeting.count({ where: { organizationId, scheduledAt: { gte: start, lte: end } } }),
+      this.prisma.followUp.count({ where: { createdAt: { gte: start, lte: end } } }),
+    ]);
+
+    return { period, startDate: start, endDate: end, newLeads, wonLeads, totalMeetings, totalFollowUps };
+  }
+
+  async getMachineReport(organizationId: string, period: string, fromDate?: string, toDate?: string) {
+    const { start, end } = this.getDateRange(period, fromDate, toDate);
+
+    const [totalMachines, activeMachines, maintenanceLogs, downtimeLogs] = await Promise.all([
+      this.prisma.machine.count({ where: { organizationId } }),
+      this.prisma.machine.count({ where: { organizationId, status: 'OPERATIONAL' } }),
+      this.prisma.maintenanceLog.count({ where: { organizationId, scheduledDate: { gte: start, lte: end } } }),
+      this.prisma.downtimeLog.count({ where: { organizationId, startTime: { gte: start, lte: end } } }),
+    ]);
+
+    return { period, startDate: start, endDate: end, totalMachines, activeMachines, maintenanceLogs, downtimeLogs };
+  }
+
+  async getUniversalReport(organizationId: string, module: string, period: string, fromDate?: string, toDate?: string) {
+    switch (module) {
+      case 'expense': return this.getExpenseReport(organizationId, period, fromDate, toDate);
+      case 'gate-pass': return this.getGatePassReport(organizationId, period, fromDate, toDate);
+      case 'assets': return this.getAssetReport(organizationId);
+      case 'crm': return this.getCrmReport(organizationId, period, fromDate, toDate);
+      case 'machines': return this.getMachineReport(organizationId, period, fromDate, toDate);
+      case 'sales': {
+        const { start, end } = this.getDateRange(period, fromDate, toDate);
+        return this.getSalesReport(organizationId, start.toISOString(), end.toISOString());
+      }
+      case 'procurement': {
+        const { start, end } = this.getDateRange(period, fromDate, toDate);
+        return this.getProcurementReport(organizationId, start.toISOString(), end.toISOString());
+      }
+      case 'production': {
+        const { start, end } = this.getDateRange(period, fromDate, toDate);
+        return this.getProductionReport(organizationId, start.toISOString(), end.toISOString());
+      }
+      case 'transport': {
+        const { start, end } = this.getDateRange(period, fromDate, toDate);
+        return this.getTransportReport(organizationId, start.toISOString(), end.toISOString());
+      }
+      default:
+        return { error: 'Unknown module', availableModules: ['expense', 'gate-pass', 'assets', 'crm', 'machines', 'sales', 'procurement', 'production', 'transport'] };
+    }
+  }
 }

@@ -36,6 +36,10 @@ import { CommunicationModule } from './modules/communication/communication.modul
 import { AnnouncementModule } from './modules/announcement/announcement.module';
 import { SetupWizardModule } from './modules/setup-wizard/setup-wizard.module';
 import { WebSocketModule } from './modules/websocket/websocket.module';
+import { GatePassModule } from './modules/gate-pass/gate-pass.module';
+import { SalespersonModule } from './modules/salesperson/salesperson.module';
+import { ProductCategoryModule } from './modules/product-category/product-category.module';
+import { BomModule } from './modules/bom/bom.module';
 
 @Module({
   imports: [
@@ -84,6 +88,10 @@ import { WebSocketModule } from './modules/websocket/websocket.module';
     AnnouncementModule,
     SetupWizardModule,
     WebSocketModule,
+    GatePassModule,
+    SalespersonModule,
+    ProductCategoryModule,
+    BomModule,
   ],
 })
 export class AppModule {}

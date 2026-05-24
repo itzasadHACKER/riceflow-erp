@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import {
   ApiTags,
   ApiBearerAuth,
@@ -200,6 +200,89 @@ export class ReportingController {
       fromDate,
       toDate,
     );
+    return createResponse(report);
+  }
+
+  @Get('expense')
+  @ApiOperation({ summary: 'Expense report (daily/mtd/ytd/monthly/yearly/custom)' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'mtd', 'monthly', 'ytd', 'yearly', 'custom'] })
+  @ApiQuery({ name: 'fromDate', required: false })
+  @ApiQuery({ name: 'toDate', required: false })
+  async getExpenseReport(
+    @CurrentUser() user: JwtPayload,
+    @Query('period') period = 'mtd',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.reportingService.getExpenseReport(user.organizationId, period, fromDate, toDate);
+    return createResponse(report);
+  }
+
+  @Get('gate-pass')
+  @ApiOperation({ summary: 'Gate pass report' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'mtd', 'monthly', 'ytd', 'yearly', 'custom'] })
+  @ApiQuery({ name: 'fromDate', required: false })
+  @ApiQuery({ name: 'toDate', required: false })
+  async getGatePassReport(
+    @CurrentUser() user: JwtPayload,
+    @Query('period') period = 'mtd',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.reportingService.getGatePassReport(user.organizationId, period, fromDate, toDate);
+    return createResponse(report);
+  }
+
+  @Get('assets')
+  @ApiOperation({ summary: 'Asset summary report' })
+  async getAssetReport(@CurrentUser() user: JwtPayload) {
+    const report = await this.reportingService.getAssetReport(user.organizationId);
+    return createResponse(report);
+  }
+
+  @Get('crm')
+  @ApiOperation({ summary: 'CRM report' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'mtd', 'monthly', 'ytd', 'yearly', 'custom'] })
+  @ApiQuery({ name: 'fromDate', required: false })
+  @ApiQuery({ name: 'toDate', required: false })
+  async getCrmReport(
+    @CurrentUser() user: JwtPayload,
+    @Query('period') period = 'mtd',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.reportingService.getCrmReport(user.organizationId, period, fromDate, toDate);
+    return createResponse(report);
+  }
+
+  @Get('machines')
+  @ApiOperation({ summary: 'Machine report' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'mtd', 'monthly', 'ytd', 'yearly', 'custom'] })
+  @ApiQuery({ name: 'fromDate', required: false })
+  @ApiQuery({ name: 'toDate', required: false })
+  async getMachineReport(
+    @CurrentUser() user: JwtPayload,
+    @Query('period') period = 'mtd',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.reportingService.getMachineReport(user.organizationId, period, fromDate, toDate);
+    return createResponse(report);
+  }
+
+  @Get('universal/:module')
+  @ApiOperation({ summary: 'Universal report for any module (daily/mtd/ytd/monthly/yearly/custom)' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'mtd', 'monthly', 'ytd', 'yearly', 'custom'] })
+  @ApiQuery({ name: 'fromDate', required: false })
+  @ApiQuery({ name: 'toDate', required: false })
+  async getUniversalReport(
+    @CurrentUser() user: JwtPayload,
+    @Param('module') module: string,
+    @Query('period') period = 'mtd',
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    const report = await this.reportingService.getUniversalReport(user.organizationId, module, period, fromDate, toDate);
     return createResponse(report);
   }
 }

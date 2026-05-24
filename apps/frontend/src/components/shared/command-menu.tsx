@@ -37,6 +37,10 @@ import {
   Bot,
   Building2,
   Plus,
+  DoorOpen,
+  Layers,
+  UserCheck,
+  Tag,
 } from "lucide-react";
 
 interface CommandMenuProps {
@@ -69,6 +73,10 @@ const pages = [
   { title: "Market Intelligence", href: "/dashboard/market", icon: TrendingUp },
   { title: "Bank Management", href: "/dashboard/bank", icon: Landmark },
   { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+  { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
+  { title: "Bill of Materials", href: "/dashboard/bom", icon: Layers },
+  { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
+  { title: "Product Categories", href: "/dashboard/product-categories", icon: Tag },
 ];
 
 const actions = [
@@ -80,6 +88,9 @@ const actions = [
   { title: "New Supplier", href: "/dashboard/procurement?tab=suppliers&new=1", icon: Plus },
   { title: "New Expense", href: "/dashboard/expense?new=1", icon: Plus },
   { title: "New Purchase", href: "/dashboard/procurement?tab=purchases&new=1", icon: Plus },
+  { title: "New Gate Pass", href: "/dashboard/gate-pass", icon: Plus },
+  { title: "New Salesperson", href: "/dashboard/salespersons", icon: Plus },
+  { title: "New BOM", href: "/dashboard/bom", icon: Plus },
 ];
 
 export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {

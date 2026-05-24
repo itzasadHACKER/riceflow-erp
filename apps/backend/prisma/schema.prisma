@@ -140,6 +140,10 @@ model Organization {
   announcements      Announcement[]
   setupProgress      SetupProgress[]
   experienceLetters  ExperienceLetterTemplate[]
+  gatePasses         GatePass[]
+  salespersons       Salesperson[]
+  salespersonSalesTransactions SalespersonSalesTransaction[]
+  productCategories  ProductCategory[]
 
   @@map("organizations")
 }
@@ -223,6 +227,7 @@ model User {
   conversationParticipants ConversationParticipant[]
   messagesSent            ConversationMessage[]       @relation("MessagesSent")
   announcementsCreated    Announcement[]              @relation("AnnouncementsCreated")
+  gatePassApprovals       GatePass[]                  @relation("GatePassApprover")
 
   @@index([organizationId])
   @@index([email])
@@ -3568,6 +3573,239 @@ model SalesReceipt {
 
   @@index([organizationId])
   @@map("sales_receipts")
+}
+
+// ===================== GATE PASS =====================
+
+enum GatePassType {
+  OUTGOING
+  INCOMING
+  VISITOR
+}
+
+enum GatePassStatus {
+  DRAFT
+  APPROVED
+  CHECKED_OUT
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+}
+
+enum OutgoingCategory {
+  RICE_SALE
+  MACHINERY
+  SAMPLES
+  OFFICE_EQUIPMENT
+  STATIONERY
+  ELECTRICAL
+  WASTE_DISPOSAL
+  MISCELLANEOUS
+}
+
+enum IncomingCategory {
+  PADDY
+  GROCERY
+  MACHINERY
+  STATIONERY
+  ELECTRICAL_EQUIPMENT
+  OFFICE_EQUIPMENT
+  RAW_MATERIAL
+  SPARE_PARTS
+  FUEL
+  MISCELLANEOUS
+}
+
+model GatePass {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  gatePassNumber   String          @map("gate_pass_number")
+  type             GatePassType
+  status           GatePassStatus  @default(DRAFT)
+  date             DateTime        @default(now())
+  // Common fields
+  vehicleNumber    String?         @map("vehicle_number")
+  driverName       String?         @map("driver_name")
+  driverPhone      String?         @map("driver_phone")
+  remarks          String?
+  approvedById     String?         @map("approved_by_id") @db.Uuid
+  approvedAt       DateTime?       @map("approved_at")
+  checkOutTime     DateTime?       @map("check_out_time")
+  checkInTime      DateTime?       @map("check_in_time")
+  // Outgoing-specific
+  outgoingCategory OutgoingCategory? @map("outgoing_category")
+  customerId       String?          @map("customer_id") @db.Uuid
+  salesOrderId     String?          @map("sales_order_id") @db.Uuid
+  deliveryChallanId String?         @map("delivery_challan_id") @db.Uuid
+  // Incoming-specific
+  incomingCategory IncomingCategory? @map("incoming_category")
+  supplierId       String?           @map("supplier_id") @db.Uuid
+  purchaseOrderId  String?           @map("purchase_order_id") @db.Uuid
+  // Visitor-specific
+  visitorName      String?          @map("visitor_name")
+  visitorPhone     String?          @map("visitor_phone")
+  visitorCompany   String?          @map("visitor_company")
+  visitorEmail     String?          @map("visitor_email")
+  visitorIdType    String?          @map("visitor_id_type")
+  visitorIdNumber  String?          @map("visitor_id_number")
+  personToMeet     String?          @map("person_to_meet")
+  department       String?
+  purpose          String?
+  expectedDuration String?          @map("expected_duration")
+  badgeNumber      String?          @map("badge_number")
+
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization     Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  approvedBy       User?            @relation("GatePassApprover", fields: [approvedById], references: [id])
+  items            GatePassItem[]
+
+  @@unique([organizationId, gatePassNumber])
+  @@index([organizationId, type])
+  @@index([organizationId, status])
+  @@map("gate_passes")
+}
+
+model GatePassItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  gatePassId  String  @map("gate_pass_id") @db.Uuid
+  description String
+  quantity    Decimal @db.Decimal(18, 4)
+  unit        String  @default("KG")
+  weight      Decimal? @db.Decimal(18, 4)
+  value       Decimal? @db.Decimal(18, 4)
+  serialNumber String? @map("serial_number")
+  remarks     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  gatePass    GatePass @relation(fields: [gatePassId], references: [id], onDelete: Cascade)
+
+  @@map("gate_pass_items")
+}
+
+// ===================== SALESPERSON =====================
+
+enum SalespersonStatus {
+  ACTIVE
+  INACTIVE
+  ON_LEAVE
+}
+
+model Salesperson {
+  id             String            @id @default(uuid()) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  phone          String?
+  email          String?
+  address        String?
+  territory      String?
+  joiningDate    DateTime          @map("joining_date")
+  status         SalespersonStatus @default(ACTIVE)
+  commissionRate Decimal           @default(0) @map("commission_rate") @db.Decimal(5, 2)
+  targetMonthly  Decimal           @default(0) @map("target_monthly") @db.Decimal(18, 4)
+  targetYearly   Decimal           @default(0) @map("target_yearly") @db.Decimal(18, 4)
+  employeeId     String?           @map("employee_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+  deletedAt      DateTime?         @map("deleted_at")
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  partyAssignments SalespersonPartyAssignment[]
+  salesTransactions SalespersonSalesTransaction[]
+
+  @@unique([organizationId, code])
+  @@map("salespersons")
+}
+
+model SalespersonPartyAssignment {
+  id             String   @id @default(uuid()) @db.Uuid
+  salespersonId  String   @map("salesperson_id") @db.Uuid
+  customerId     String   @map("customer_id") @db.Uuid
+  assignedDate   DateTime @default(now()) @map("assigned_date")
+  isActive       Boolean  @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  salesperson    Salesperson @relation(fields: [salespersonId], references: [id], onDelete: Cascade)
+
+  @@unique([salespersonId, customerId])
+  @@map("salesperson_party_assignments")
+}
+
+model SalespersonSalesTransaction {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  salespersonId  String   @map("salesperson_id") @db.Uuid
+  date           DateTime
+  invoiceNumber  String?  @map("invoice_number")
+  customerName   String?  @map("customer_name")
+  productName    String?  @map("product_name")
+  riceVarietyId  String?  @map("rice_variety_id") @db.Uuid
+  quantity       Decimal  @default(0) @db.Decimal(18, 4)
+  weight         Decimal  @default(0) @db.Decimal(18, 4)
+  amount         Decimal  @default(0) @db.Decimal(18, 4)
+  commission     Decimal  @default(0) @db.Decimal(18, 4)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  salesperson    Salesperson   @relation(fields: [salespersonId], references: [id], onDelete: Cascade)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, salespersonId])
+  @@index([organizationId, date])
+  @@map("salesperson_sales_transactions")
+}
+
+// ===================== PRODUCT CATEGORY / CUSTOM TYPES =====================
+
+model ProductCategory {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  code           String
+  parentId       String?  @map("parent_id") @db.Uuid
+  module         String
+  description    String?
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent         ProductCategory?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children       ProductCategory[] @relation("CategoryTree")
+  parameters     CategoryParameter[]
+
+  @@unique([organizationId, module, code])
+  @@map("product_categories")
+}
+
+model CategoryParameter {
+  id             String   @id @default(uuid()) @db.Uuid
+  categoryId     String   @map("category_id") @db.Uuid
+  name           String
+  fieldType      String   @default("TEXT") @map("field_type")
+  options        Json?
+  isRequired     Boolean  @default(false) @map("is_required")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  category       ProductCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("category_parameters")
+}
+
+model CategoryParameterValue {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  parameterId    String   @map("parameter_id") @db.Uuid
+  entityId       String   @map("entity_id") @db.Uuid
+  entityType     String   @map("entity_type")
+  value          String
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([organizationId, entityType, entityId])
+  @@map("category_parameter_values")
 }
 
 // ===================== CUSTOMER STATEMENT =====================
