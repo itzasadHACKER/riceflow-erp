@@ -17,7 +17,6 @@ import {
 import {
   CreateJournalEntryDto,
   JournalEntryFilterDto,
-  JournalEntryTypeEnum,
 } from './dto/journal-entry.dto';
 import {
   CreatePaymentVoucherDto,
@@ -647,38 +646,6 @@ export class FinanceService {
         postedAt: new Date(),
       },
       include: { lines: { include: { account: true } } },
-    });
-  }
-
-  async reverseJournalEntry(
-    organizationId: string,
-    userId: string,
-    id: string,
-  ) {
-    const entry = await this.prisma.journalEntry.findFirst({
-      where: { id, organizationId, deletedAt: null },
-      include: { lines: true, fiscalYear: true },
-    });
-
-    if (!entry) throw new NotFoundException('Journal entry not found');
-    if (!entry.isPosted)
-      throw new BadRequestException('Can only reverse posted entries');
-
-    const reversalLines = entry.lines.map((line) => ({
-      accountId: line.accountId,
-      debit: Number(line.credit),
-      credit: Number(line.debit),
-      narration: `Reversal of ${entry.entryNumber}`,
-      costCenter: line.costCenter ?? undefined,
-    }));
-
-    return this.createJournalEntry(organizationId, userId, {
-      date: new Date().toISOString().split('T')[0],
-      reference: `REV-${entry.entryNumber}`,
-      narration: `Reversal of entry ${entry.entryNumber}`,
-      entryType: JournalEntryTypeEnum.ADJUSTMENT,
-      fiscalYearId: entry.fiscalYearId,
-      lines: reversalLines,
     });
   }
 
@@ -1451,39 +1418,6 @@ export class FinanceService {
     return { data, total, page, limit };
   }
 
-  // ===== CASH BOOK & BANK BOOK =====
-
-  async getCashBook(organizationId: string, fromDate: string, toDate: string) {
-    const cashAccount = await this.prisma.chartOfAccount.findFirst({
-      where: { organizationId, code: '1110' },
-    });
-    if (!cashAccount) throw new NotFoundException('Cash account not found');
-
-    return this.getGeneralLedger(organizationId, {
-      accountId: cashAccount.id,
-      fromDate,
-      toDate,
-    });
-  }
-
-  async getBankBook(
-    organizationId: string,
-    bankAccountId: string,
-    fromDate: string,
-    toDate: string,
-  ) {
-    const bankAcc = await this.prisma.bankAccount.findFirst({
-      where: { id: bankAccountId, organizationId },
-    });
-    if (!bankAcc) throw new NotFoundException('Bank account not found');
-
-    return this.getGeneralLedger(organizationId, {
-      accountId: bankAcc.accountId,
-      fromDate,
-      toDate,
-    });
-  }
-
   // ===== RECEIVABLES & PAYABLES =====
 
   async getReceivablesSummary(organizationId: string) {
@@ -1580,5 +1514,886 @@ export class FinanceService {
       where: { organizationId },
     });
     return `EC-${String(count + 1).padStart(6, '0')}`;
+  }
+
+  // ===== CREDIT NOTES =====
+
+  async createCreditNote(
+    organizationId: string,
+    dto: {
+      date: string;
+      customerId: string;
+      salesInvoiceId?: string;
+      totalAmount: number;
+      taxAmount?: number;
+      netAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+    createdBy?: string,
+  ) {
+    const count = await this.prisma.creditNote.count({
+      where: { organizationId },
+    });
+    const noteNumber = `CN-${String(count + 1).padStart(6, '0')}`;
+    return this.prisma.creditNote.create({
+      data: {
+        organizationId,
+        noteNumber,
+        date: new Date(dto.date),
+        customerId: dto.customerId,
+        salesInvoiceId: dto.salesInvoiceId,
+        totalAmount: new Prisma.Decimal(dto.totalAmount),
+        taxAmount: new Prisma.Decimal(dto.taxAmount ?? 0),
+        netAmount: new Prisma.Decimal(dto.netAmount),
+        reason: dto.reason,
+        narration: dto.narration,
+        createdBy,
+      },
+    });
+  }
+
+  async getCreditNotes(
+    organizationId: string,
+    filter: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: string;
+      limit?: string;
+    },
+  ) {
+    const page = parseInt(filter.page ?? '1', 10);
+    const limit = parseInt(filter.limit ?? '20', 10);
+    const where: Prisma.CreditNoteWhereInput = {
+      organizationId,
+      deletedAt: null,
+    };
+    if (filter.status)
+      where.status = filter.status as 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) where.date.gte = new Date(filter.startDate);
+      if (filter.endDate) where.date.lte = new Date(filter.endDate);
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.creditNote.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: true, salesInvoice: true },
+      }),
+      this.prisma.creditNote.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async confirmCreditNote(
+    organizationId: string,
+    id: string,
+    fiscalYearId: string,
+  ) {
+    const note = await this.prisma.creditNote.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      include: { customer: true },
+    });
+    if (!note) throw new NotFoundException('Credit note not found');
+    if (note.status !== 'DRAFT') {
+      throw new BadRequestException('Only DRAFT notes can be confirmed');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const entryNumber = await this.generateEntryNumber(tx, organizationId);
+      const receivableAccount = await tx.chartOfAccount.findFirst({
+        where: { organizationId, code: '1210' },
+      });
+      const salesReturnAccount = await tx.chartOfAccount.findFirst({
+        where: { organizationId, code: '4200' },
+      });
+
+      let journalEntryId: string | undefined;
+      if (receivableAccount && salesReturnAccount) {
+        const entry = await tx.journalEntry.create({
+          data: {
+            organizationId,
+            entryNumber,
+            date: note.date,
+            reference: note.noteNumber,
+            narration:
+              note.narration ??
+              `Credit Note ${note.noteNumber} - ${note.customer.name}`,
+            entryType: 'CREDIT_NOTE',
+            fiscalYearId,
+            isPosted: true,
+            postedAt: new Date(),
+            lines: {
+              create: [
+                {
+                  accountId: salesReturnAccount.id,
+                  debit: note.netAmount,
+                  credit: new Prisma.Decimal(0),
+                  narration: `Credit Note: ${note.customer.name} - ${note.reason ?? ''}`,
+                },
+                {
+                  accountId: receivableAccount.id,
+                  debit: new Prisma.Decimal(0),
+                  credit: note.netAmount,
+                  narration: `Credit Note: ${note.customer.name}`,
+                },
+              ],
+            },
+          },
+        });
+        journalEntryId = entry.id;
+      }
+
+      return tx.creditNote.update({
+        where: { id },
+        data: {
+          status: 'CONFIRMED',
+          journalEntryId,
+        },
+      });
+    });
+  }
+
+  // ===== DEBIT NOTES =====
+
+  async createDebitNote(
+    organizationId: string,
+    dto: {
+      date: string;
+      supplierId: string;
+      purchaseId?: string;
+      totalAmount: number;
+      taxAmount?: number;
+      netAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+    createdBy?: string,
+  ) {
+    const count = await this.prisma.debitNote.count({
+      where: { organizationId },
+    });
+    const noteNumber = `DN-${String(count + 1).padStart(6, '0')}`;
+    return this.prisma.debitNote.create({
+      data: {
+        organizationId,
+        noteNumber,
+        date: new Date(dto.date),
+        supplierId: dto.supplierId,
+        purchaseId: dto.purchaseId,
+        totalAmount: new Prisma.Decimal(dto.totalAmount),
+        taxAmount: new Prisma.Decimal(dto.taxAmount ?? 0),
+        netAmount: new Prisma.Decimal(dto.netAmount),
+        reason: dto.reason,
+        narration: dto.narration,
+        createdBy,
+      },
+    });
+  }
+
+  async getDebitNotes(
+    organizationId: string,
+    filter: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: string;
+      limit?: string;
+    },
+  ) {
+    const page = parseInt(filter.page ?? '1', 10);
+    const limit = parseInt(filter.limit ?? '20', 10);
+    const where: Prisma.DebitNoteWhereInput = {
+      organizationId,
+      deletedAt: null,
+    };
+    if (filter.status)
+      where.status = filter.status as 'DRAFT' | 'CONFIRMED' | 'CANCELLED';
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) where.date.gte = new Date(filter.startDate);
+      if (filter.endDate) where.date.lte = new Date(filter.endDate);
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.debitNote.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { supplier: true },
+      }),
+      this.prisma.debitNote.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async confirmDebitNote(
+    organizationId: string,
+    id: string,
+    fiscalYearId: string,
+  ) {
+    const note = await this.prisma.debitNote.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      include: { supplier: true },
+    });
+    if (!note) throw new NotFoundException('Debit note not found');
+    if (note.status !== 'DRAFT') {
+      throw new BadRequestException('Only DRAFT notes can be confirmed');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const entryNumber = await this.generateEntryNumber(tx, organizationId);
+      const payableAccount = await tx.chartOfAccount.findFirst({
+        where: { organizationId, code: '2110' },
+      });
+      const purchaseReturnAccount = await tx.chartOfAccount.findFirst({
+        where: { organizationId, code: '5200' },
+      });
+
+      let journalEntryId: string | undefined;
+      if (payableAccount && purchaseReturnAccount) {
+        const entry = await tx.journalEntry.create({
+          data: {
+            organizationId,
+            entryNumber,
+            date: note.date,
+            reference: note.noteNumber,
+            narration:
+              note.narration ??
+              `Debit Note ${note.noteNumber} - ${note.supplier.name}`,
+            entryType: 'DEBIT_NOTE',
+            fiscalYearId,
+            isPosted: true,
+            postedAt: new Date(),
+            lines: {
+              create: [
+                {
+                  accountId: payableAccount.id,
+                  debit: note.netAmount,
+                  credit: new Prisma.Decimal(0),
+                  narration: `Debit Note: ${note.supplier.name} - ${note.reason ?? ''}`,
+                },
+                {
+                  accountId: purchaseReturnAccount.id,
+                  debit: new Prisma.Decimal(0),
+                  credit: note.netAmount,
+                  narration: `Debit Note: ${note.supplier.name}`,
+                },
+              ],
+            },
+          },
+        });
+        journalEntryId = entry.id;
+      }
+
+      return tx.debitNote.update({
+        where: { id },
+        data: {
+          status: 'CONFIRMED',
+          journalEntryId,
+        },
+      });
+    });
+  }
+
+  // ===== PURCHASE RETURNS =====
+
+  async createPurchaseReturn(
+    organizationId: string,
+    dto: {
+      date: string;
+      supplierId: string;
+      purchaseId?: string;
+      warehouseId?: string;
+      riceVarietyId?: string;
+      quantity: number;
+      rate: number;
+      totalAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+    createdBy?: string,
+  ) {
+    const count = await this.prisma.purchaseReturn.count({
+      where: { organizationId },
+    });
+    const returnNumber = `PR-${String(count + 1).padStart(6, '0')}`;
+    return this.prisma.purchaseReturn.create({
+      data: {
+        organizationId,
+        returnNumber,
+        date: new Date(dto.date),
+        supplierId: dto.supplierId,
+        purchaseId: dto.purchaseId,
+        warehouseId: dto.warehouseId,
+        riceVarietyId: dto.riceVarietyId,
+        quantity: new Prisma.Decimal(dto.quantity),
+        rate: new Prisma.Decimal(dto.rate),
+        totalAmount: new Prisma.Decimal(dto.totalAmount),
+        reason: dto.reason,
+        narration: dto.narration,
+        createdBy,
+      },
+    });
+  }
+
+  async getPurchaseReturns(
+    organizationId: string,
+    filter: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: string;
+      limit?: string;
+    },
+  ) {
+    const page = parseInt(filter.page ?? '1', 10);
+    const limit = parseInt(filter.limit ?? '20', 10);
+    const where: Prisma.PurchaseReturnWhereInput = {
+      organizationId,
+      deletedAt: null,
+    };
+    if (filter.status)
+      where.status = filter.status as
+        | 'DRAFT'
+        | 'APPROVED'
+        | 'COMPLETED'
+        | 'CANCELLED';
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) where.date.gte = new Date(filter.startDate);
+      if (filter.endDate) where.date.lte = new Date(filter.endDate);
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.purchaseReturn.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { supplier: true },
+      }),
+      this.prisma.purchaseReturn.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  // ===== SALES RETURNS =====
+
+  async createSalesReturn(
+    organizationId: string,
+    dto: {
+      date: string;
+      customerId: string;
+      salesOrderId?: string;
+      invoiceId?: string;
+      warehouseId?: string;
+      riceVarietyId?: string;
+      quantity: number;
+      rate: number;
+      totalAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+    createdBy?: string,
+  ) {
+    const count = await this.prisma.salesReturn.count({
+      where: { organizationId },
+    });
+    const returnNumber = `SR-${String(count + 1).padStart(6, '0')}`;
+    return this.prisma.salesReturn.create({
+      data: {
+        organizationId,
+        returnNumber,
+        date: new Date(dto.date),
+        customerId: dto.customerId,
+        salesOrderId: dto.salesOrderId,
+        invoiceId: dto.invoiceId,
+        warehouseId: dto.warehouseId,
+        riceVarietyId: dto.riceVarietyId,
+        quantity: new Prisma.Decimal(dto.quantity),
+        rate: new Prisma.Decimal(dto.rate),
+        totalAmount: new Prisma.Decimal(dto.totalAmount),
+        reason: dto.reason,
+        narration: dto.narration,
+        createdBy,
+      },
+    });
+  }
+
+  async getSalesReturns(
+    organizationId: string,
+    filter: {
+      status?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: string;
+      limit?: string;
+    },
+  ) {
+    const page = parseInt(filter.page ?? '1', 10);
+    const limit = parseInt(filter.limit ?? '20', 10);
+    const where: Prisma.SalesReturnWhereInput = {
+      organizationId,
+      deletedAt: null,
+    };
+    if (filter.status)
+      where.status = filter.status as
+        | 'DRAFT'
+        | 'APPROVED'
+        | 'COMPLETED'
+        | 'CANCELLED';
+    if (filter.startDate || filter.endDate) {
+      where.date = {};
+      if (filter.startDate) where.date.gte = new Date(filter.startDate);
+      if (filter.endDate) where.date.lte = new Date(filter.endDate);
+    }
+    const [data, total] = await Promise.all([
+      this.prisma.salesReturn.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: true },
+      }),
+      this.prisma.salesReturn.count({ where }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  // ===== EDIT/DELETE POSTED ENTRIES (SAP-STYLE) =====
+
+  async editPostedJournalEntry(
+    organizationId: string,
+    id: string,
+    dto: {
+      narration?: string;
+      reference?: string;
+    },
+    userId?: string,
+  ) {
+    const entry = await this.prisma.journalEntry.findFirst({
+      where: { id, organizationId, deletedAt: null },
+    });
+    if (!entry) throw new NotFoundException('Journal entry not found');
+
+    await this.prisma.auditLog.create({
+      data: {
+        organizationId,
+        userId,
+        entityType: 'JOURNAL_ENTRY',
+        entityId: id,
+        action: 'UPDATE',
+        oldValues: {
+          narration: entry.narration,
+          reference: entry.reference,
+        },
+        newValues: {
+          narration: dto.narration ?? entry.narration,
+          reference: dto.reference ?? entry.reference,
+        },
+      },
+    });
+
+    return this.prisma.journalEntry.update({
+      where: { id },
+      data: {
+        narration: dto.narration ?? entry.narration,
+        reference: dto.reference ?? entry.reference,
+      },
+    });
+  }
+
+  async deletePostedJournalEntry(
+    organizationId: string,
+    id: string,
+    userId?: string,
+  ) {
+    const entry = await this.prisma.journalEntry.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      include: { lines: true },
+    });
+    if (!entry) throw new NotFoundException('Journal entry not found');
+
+    await this.prisma.auditLog.create({
+      data: {
+        organizationId,
+        userId,
+        entityType: 'JOURNAL_ENTRY',
+        entityId: id,
+        action: 'DELETE',
+        oldValues: {
+          entryNumber: entry.entryNumber,
+          date: entry.date.toISOString(),
+          narration: entry.narration,
+          entryType: entry.entryType,
+          lines: entry.lines.map((l) => ({
+            accountId: l.accountId,
+            debit: l.debit.toString(),
+            credit: l.credit.toString(),
+          })),
+        },
+      },
+    });
+
+    return this.prisma.journalEntry.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async reverseJournalEntry(
+    organizationId: string,
+    id: string,
+    dto: { date: string; narration?: string; fiscalYearId: string },
+    userId?: string,
+  ) {
+    const original = await this.prisma.journalEntry.findFirst({
+      where: { id, organizationId, deletedAt: null },
+      include: { lines: true },
+    });
+    if (!original) throw new NotFoundException('Journal entry not found');
+
+    return this.prisma.$transaction(async (tx) => {
+      const entryNumber = await this.generateEntryNumber(tx, organizationId);
+      const reversalEntry = await tx.journalEntry.create({
+        data: {
+          organizationId,
+          entryNumber,
+          date: new Date(dto.date),
+          reference: `Reversal of ${original.entryNumber}`,
+          narration:
+            dto.narration ??
+            `Reversal of ${original.entryNumber}: ${original.narration ?? ''}`,
+          entryType: 'REVERSAL',
+          fiscalYearId: dto.fiscalYearId,
+          isPosted: true,
+          postedAt: new Date(),
+          createdBy: userId,
+          lines: {
+            create: original.lines.map((line) => ({
+              accountId: line.accountId,
+              debit: line.credit,
+              credit: line.debit,
+              narration: `Reversal: ${line.narration ?? ''}`,
+              costCenter: line.costCenter ?? undefined,
+            })),
+          },
+        },
+        include: { lines: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          organizationId,
+          userId,
+          entityType: 'JOURNAL_ENTRY',
+          entityId: id,
+          action: 'UPDATE',
+          oldValues: { status: 'posted' },
+          newValues: {
+            status: 'reversed',
+            reversalEntryId: reversalEntry.id,
+          },
+        },
+      });
+
+      return reversalEntry;
+    });
+  }
+
+  // ===== CASH BOOK =====
+
+  async getCashBook(
+    organizationId: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const cashAccount = await this.prisma.chartOfAccount.findFirst({
+      where: { organizationId, code: '1110' },
+    });
+    if (!cashAccount)
+      return {
+        accountName: 'Cash in Hand',
+        openingBalance: '0',
+        entries: [],
+        closingBalance: '0',
+      };
+
+    const dateFilter: Prisma.JournalEntryWhereInput = {};
+    if (startDate || endDate) {
+      dateFilter.date = {};
+      if (startDate) dateFilter.date.gte = new Date(startDate);
+      if (endDate) dateFilter.date.lte = new Date(endDate);
+    }
+
+    const lines = await this.prisma.journalEntryLine.findMany({
+      where: {
+        accountId: cashAccount.id,
+        journalEntry: {
+          organizationId,
+          isPosted: true,
+          deletedAt: null,
+          ...dateFilter,
+        },
+      },
+      include: {
+        journalEntry: {
+          select: {
+            entryNumber: true,
+            date: true,
+            narration: true,
+            reference: true,
+            entryType: true,
+          },
+        },
+      },
+      orderBy: { journalEntry: { date: 'asc' } },
+    });
+
+    let runningBalance = new Prisma.Decimal(cashAccount.openingBalance);
+    const entries = lines.map((line) => {
+      runningBalance = runningBalance.add(line.debit).sub(line.credit);
+      return {
+        date: line.journalEntry.date,
+        entryNumber: line.journalEntry.entryNumber,
+        narration: line.narration ?? line.journalEntry.narration,
+        reference: line.journalEntry.reference,
+        type: line.journalEntry.entryType,
+        debit: line.debit.toString(),
+        credit: line.credit.toString(),
+        balance: runningBalance.toString(),
+      };
+    });
+
+    return {
+      accountName: cashAccount.name,
+      accountCode: cashAccount.code,
+      openingBalance: cashAccount.openingBalance.toString(),
+      entries,
+      closingBalance: runningBalance.toString(),
+    };
+  }
+
+  // ===== DAY BOOK =====
+
+  async getDayBook(organizationId: string, date: string) {
+    const targetDate = new Date(date);
+    const nextDate = new Date(targetDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    const entries = await this.prisma.journalEntry.findMany({
+      where: {
+        organizationId,
+        isPosted: true,
+        deletedAt: null,
+        date: { gte: targetDate, lt: nextDate },
+      },
+      include: {
+        lines: {
+          include: { account: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    let totalDebit = new Prisma.Decimal(0);
+    let totalCredit = new Prisma.Decimal(0);
+
+    const formattedEntries = entries.map((entry) => {
+      let entryDebit = new Prisma.Decimal(0);
+      let entryCredit = new Prisma.Decimal(0);
+      for (const line of entry.lines) {
+        entryDebit = entryDebit.add(line.debit);
+        entryCredit = entryCredit.add(line.credit);
+      }
+      totalDebit = totalDebit.add(entryDebit);
+      totalCredit = totalCredit.add(entryCredit);
+
+      return {
+        entryNumber: entry.entryNumber,
+        date: entry.date,
+        narration: entry.narration,
+        reference: entry.reference,
+        entryType: entry.entryType,
+        lines: entry.lines.map((l) => ({
+          accountCode: l.account.code,
+          accountName: l.account.name,
+          debit: l.debit.toString(),
+          credit: l.credit.toString(),
+          narration: l.narration,
+        })),
+        totalDebit: entryDebit.toString(),
+        totalCredit: entryCredit.toString(),
+      };
+    });
+
+    return {
+      date,
+      totalEntries: entries.length,
+      entries: formattedEntries,
+      totalDebit: totalDebit.toString(),
+      totalCredit: totalCredit.toString(),
+    };
+  }
+
+  // ===== ACCOUNT STATEMENT =====
+
+  async getAccountStatement(
+    organizationId: string,
+    accountId: string,
+    startDate?: string,
+    endDate?: string,
+  ) {
+    const account = await this.prisma.chartOfAccount.findFirst({
+      where: { id: accountId, organizationId },
+    });
+    if (!account) throw new NotFoundException('Account not found');
+
+    const dateFilter: Prisma.JournalEntryWhereInput = {};
+    if (startDate || endDate) {
+      dateFilter.date = {};
+      if (startDate) dateFilter.date.gte = new Date(startDate);
+      if (endDate) dateFilter.date.lte = new Date(endDate);
+    }
+
+    const lines = await this.prisma.journalEntryLine.findMany({
+      where: {
+        accountId,
+        journalEntry: {
+          organizationId,
+          isPosted: true,
+          deletedAt: null,
+          ...dateFilter,
+        },
+      },
+      include: {
+        journalEntry: {
+          select: {
+            entryNumber: true,
+            date: true,
+            narration: true,
+            reference: true,
+            entryType: true,
+          },
+        },
+      },
+      orderBy: { journalEntry: { date: 'asc' } },
+    });
+
+    let runningBalance = new Prisma.Decimal(account.openingBalance);
+    const entries = lines.map((line) => {
+      runningBalance = runningBalance.add(line.debit).sub(line.credit);
+      return {
+        date: line.journalEntry.date,
+        entryNumber: line.journalEntry.entryNumber,
+        narration: line.narration ?? line.journalEntry.narration,
+        reference: line.journalEntry.reference,
+        entryType: line.journalEntry.entryType,
+        debit: line.debit.toString(),
+        credit: line.credit.toString(),
+        balance: runningBalance.toString(),
+      };
+    });
+
+    return {
+      account: {
+        code: account.code,
+        name: account.name,
+        accountType: account.accountType,
+        openingBalance: account.openingBalance.toString(),
+      },
+      entries,
+      closingBalance: runningBalance.toString(),
+      totalDebit: lines
+        .reduce((sum, l) => sum.add(l.debit), new Prisma.Decimal(0))
+        .toString(),
+      totalCredit: lines
+        .reduce((sum, l) => sum.add(l.credit), new Prisma.Decimal(0))
+        .toString(),
+    };
+  }
+
+  // ===== CASH FLOW STATEMENT =====
+
+  async getCashFlowStatement(
+    organizationId: string,
+    startDate: string,
+    endDate: string,
+  ) {
+    const accounts = await this.prisma.chartOfAccount.findMany({
+      where: { organizationId, isGroup: false },
+    });
+    const accountMap = new Map(accounts.map((a) => [a.id, a]));
+
+    const lines = await this.prisma.journalEntryLine.findMany({
+      where: {
+        journalEntry: {
+          organizationId,
+          isPosted: true,
+          deletedAt: null,
+          date: {
+            gte: new Date(startDate),
+            lte: new Date(endDate),
+          },
+        },
+      },
+    });
+
+    let operatingIn = new Prisma.Decimal(0);
+    let operatingOut = new Prisma.Decimal(0);
+    let investingIn = new Prisma.Decimal(0);
+    let investingOut = new Prisma.Decimal(0);
+    let financingIn = new Prisma.Decimal(0);
+    let financingOut = new Prisma.Decimal(0);
+
+    for (const line of lines) {
+      const account = accountMap.get(line.accountId);
+      if (!account) continue;
+
+      const accountType = account.accountType;
+      if (accountType === 'INCOME' || accountType === 'EXPENSE') {
+        operatingIn = operatingIn.add(line.credit);
+        operatingOut = operatingOut.add(line.debit);
+      } else if (accountType === 'ASSET') {
+        const code = account.code;
+        if (code.startsWith('1') && !code.startsWith('11')) {
+          investingOut = investingOut.add(line.debit);
+          investingIn = investingIn.add(line.credit);
+        }
+      } else if (accountType === 'LIABILITY' || accountType === 'EQUITY') {
+        financingIn = financingIn.add(line.credit);
+        financingOut = financingOut.add(line.debit);
+      }
+    }
+
+    return {
+      period: { startDate, endDate },
+      operatingActivities: {
+        inflows: operatingIn.toString(),
+        outflows: operatingOut.toString(),
+        net: operatingIn.sub(operatingOut).toString(),
+      },
+      investingActivities: {
+        inflows: investingIn.toString(),
+        outflows: investingOut.toString(),
+        net: investingIn.sub(investingOut).toString(),
+      },
+      financingActivities: {
+        inflows: financingIn.toString(),
+        outflows: financingOut.toString(),
+        net: financingIn.sub(financingOut).toString(),
+      },
+      netCashFlow: operatingIn
+        .sub(operatingOut)
+        .add(investingIn)
+        .sub(investingOut)
+        .add(financingIn)
+        .sub(financingOut)
+        .toString(),
+    };
   }
 }

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -209,20 +210,6 @@ export class FinanceController {
     return createResponse(entry);
   }
 
-  @Post('journal-entries/:id/reverse')
-  @ApiOperation({ summary: 'Reverse a posted journal entry' })
-  async reverseJournalEntry(
-    @CurrentUser() user: JwtPayload,
-    @Param('id', ParseUUIDPipe) id: string,
-  ) {
-    const entry = await this.financeService.reverseJournalEntry(
-      user.organizationId,
-      user.sub,
-      id,
-    );
-    return createResponse(entry);
-  }
-
   @Get('journal-entries')
   @ApiOperation({ summary: 'List journal entries with filters' })
   @ApiQuery({ name: 'page', required: false })
@@ -329,44 +316,6 @@ export class FinanceController {
       fiscalYearId,
     );
     return createResponse(bs);
-  }
-
-  // ===== CASH BOOK & BANK BOOK =====
-
-  @Get('cash-book')
-  @ApiOperation({ summary: 'Get cash book' })
-  @ApiQuery({ name: 'fromDate', required: true })
-  @ApiQuery({ name: 'toDate', required: true })
-  async getCashBook(
-    @CurrentUser() user: JwtPayload,
-    @Query('fromDate') fromDate: string,
-    @Query('toDate') toDate: string,
-  ) {
-    const cb = await this.financeService.getCashBook(
-      user.organizationId,
-      fromDate,
-      toDate,
-    );
-    return createResponse(cb);
-  }
-
-  @Get('bank-book/:bankAccountId')
-  @ApiOperation({ summary: 'Get bank book for a specific bank account' })
-  @ApiQuery({ name: 'fromDate', required: true })
-  @ApiQuery({ name: 'toDate', required: true })
-  async getBankBook(
-    @CurrentUser() user: JwtPayload,
-    @Param('bankAccountId', ParseUUIDPipe) bankAccountId: string,
-    @Query('fromDate') fromDate: string,
-    @Query('toDate') toDate: string,
-  ) {
-    const bb = await this.financeService.getBankBook(
-      user.organizationId,
-      bankAccountId,
-      fromDate,
-      toDate,
-    );
-    return createResponse(bb);
   }
 
   // ===== RECEIVABLES & PAYABLES =====
@@ -585,5 +534,357 @@ export class FinanceController {
       result.page,
       result.limit,
     );
+  }
+
+  // ===== CREDIT NOTES =====
+
+  @Post('credit-notes')
+  @ApiOperation({ summary: 'Create credit note' })
+  async createCreditNote(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    dto: {
+      date: string;
+      customerId: string;
+      salesInvoiceId?: string;
+      totalAmount: number;
+      taxAmount?: number;
+      netAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+  ) {
+    const result = await this.financeService.createCreditNote(
+      user.organizationId,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Get('credit-notes')
+  @ApiOperation({ summary: 'List credit notes' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getCreditNotes(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.financeService.getCreditNotes(
+      user.organizationId,
+      { status, startDate, endDate, page, limit },
+    );
+    return createResponse(result);
+  }
+
+  @Post('credit-notes/:id/confirm')
+  @ApiOperation({ summary: 'Confirm credit note and post GL entry' })
+  @ApiQuery({ name: 'fiscalYearId', required: true })
+  async confirmCreditNote(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('fiscalYearId') fiscalYearId: string,
+  ) {
+    const result = await this.financeService.confirmCreditNote(
+      user.organizationId,
+      id,
+      fiscalYearId,
+    );
+    return createResponse(result);
+  }
+
+  // ===== DEBIT NOTES =====
+
+  @Post('debit-notes')
+  @ApiOperation({ summary: 'Create debit note' })
+  async createDebitNote(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    dto: {
+      date: string;
+      supplierId: string;
+      purchaseId?: string;
+      totalAmount: number;
+      taxAmount?: number;
+      netAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+  ) {
+    const result = await this.financeService.createDebitNote(
+      user.organizationId,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Get('debit-notes')
+  @ApiOperation({ summary: 'List debit notes' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getDebitNotes(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.financeService.getDebitNotes(
+      user.organizationId,
+      { status, startDate, endDate, page, limit },
+    );
+    return createResponse(result);
+  }
+
+  @Post('debit-notes/:id/confirm')
+  @ApiOperation({ summary: 'Confirm debit note and post GL entry' })
+  @ApiQuery({ name: 'fiscalYearId', required: true })
+  async confirmDebitNote(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query('fiscalYearId') fiscalYearId: string,
+  ) {
+    const result = await this.financeService.confirmDebitNote(
+      user.organizationId,
+      id,
+      fiscalYearId,
+    );
+    return createResponse(result);
+  }
+
+  // ===== PURCHASE RETURNS =====
+
+  @Post('purchase-returns')
+  @ApiOperation({ summary: 'Create purchase return' })
+  async createPurchaseReturn(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    dto: {
+      date: string;
+      supplierId: string;
+      purchaseId?: string;
+      warehouseId?: string;
+      riceVarietyId?: string;
+      quantity: number;
+      rate: number;
+      totalAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+  ) {
+    const result = await this.financeService.createPurchaseReturn(
+      user.organizationId,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Get('purchase-returns')
+  @ApiOperation({ summary: 'List purchase returns' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getPurchaseReturns(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.financeService.getPurchaseReturns(
+      user.organizationId,
+      { status, startDate, endDate, page, limit },
+    );
+    return createResponse(result);
+  }
+
+  // ===== SALES RETURNS =====
+
+  @Post('sales-returns')
+  @ApiOperation({ summary: 'Create sales return' })
+  async createSalesReturn(
+    @CurrentUser() user: JwtPayload,
+    @Body()
+    dto: {
+      date: string;
+      customerId: string;
+      salesOrderId?: string;
+      invoiceId?: string;
+      warehouseId?: string;
+      riceVarietyId?: string;
+      quantity: number;
+      rate: number;
+      totalAmount: number;
+      reason?: string;
+      narration?: string;
+    },
+  ) {
+    const result = await this.financeService.createSalesReturn(
+      user.organizationId,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Get('sales-returns')
+  @ApiOperation({ summary: 'List sales returns' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async getSalesReturns(
+    @CurrentUser() user: JwtPayload,
+    @Query('status') status?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.financeService.getSalesReturns(
+      user.organizationId,
+      { status, startDate, endDate, page, limit },
+    );
+    return createResponse(result);
+  }
+
+  // ===== EDIT/DELETE POSTED ENTRIES (SAP-STYLE) =====
+
+  @Patch('journal-entries/:id/edit-posted')
+  @ApiOperation({ summary: 'Edit posted journal entry (SAP-style audit)' })
+  async editPostedJournalEntry(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { narration?: string; reference?: string },
+  ) {
+    const result = await this.financeService.editPostedJournalEntry(
+      user.organizationId,
+      id,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Delete('journal-entries/:id')
+  @ApiOperation({ summary: 'Soft delete journal entry with audit trail' })
+  async deletePostedJournalEntry(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const result = await this.financeService.deletePostedJournalEntry(
+      user.organizationId,
+      id,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  @Post('journal-entries/:id/reverse')
+  @ApiOperation({ summary: 'Reverse a posted journal entry' })
+  async reverseJournalEntry(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { date: string; narration?: string; fiscalYearId: string },
+  ) {
+    const result = await this.financeService.reverseJournalEntry(
+      user.organizationId,
+      id,
+      dto,
+      user.sub,
+    );
+    return createResponse(result);
+  }
+
+  // ===== CASH BOOK =====
+
+  @Get('cash-book')
+  @ApiOperation({ summary: 'Get cash book' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async getCashBook(
+    @CurrentUser() user: JwtPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const result = await this.financeService.getCashBook(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
+    return createResponse(result);
+  }
+
+  // ===== DAY BOOK =====
+
+  @Get('day-book')
+  @ApiOperation({ summary: 'Get day book for a specific date' })
+  @ApiQuery({ name: 'date', required: true })
+  async getDayBook(
+    @CurrentUser() user: JwtPayload,
+    @Query('date') date: string,
+  ) {
+    const result = await this.financeService.getDayBook(
+      user.organizationId,
+      date,
+    );
+    return createResponse(result);
+  }
+
+  // ===== ACCOUNT STATEMENT =====
+
+  @Get('account-statement/:accountId')
+  @ApiOperation({ summary: 'Get account statement with running balance' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  async getAccountStatement(
+    @CurrentUser() user: JwtPayload,
+    @Param('accountId', ParseUUIDPipe) accountId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const result = await this.financeService.getAccountStatement(
+      user.organizationId,
+      accountId,
+      startDate,
+      endDate,
+    );
+    return createResponse(result);
+  }
+
+  // ===== CASH FLOW STATEMENT =====
+
+  @Get('cash-flow')
+  @ApiOperation({ summary: 'Get cash flow statement' })
+  @ApiQuery({ name: 'startDate', required: true })
+  @ApiQuery({ name: 'endDate', required: true })
+  async getCashFlowStatement(
+    @CurrentUser() user: JwtPayload,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ) {
+    const result = await this.financeService.getCashFlowStatement(
+      user.organizationId,
+      startDate,
+      endDate,
+    );
+    return createResponse(result);
   }
 }

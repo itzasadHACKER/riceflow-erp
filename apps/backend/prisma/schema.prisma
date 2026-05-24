@@ -76,6 +76,24 @@ model Organization {
   leaveTypes         LeaveType[]
   expenseClaims      ExpenseClaim[]
   stockAdjustments   StockAdjustment[]
+  creditNotes        CreditNote[]
+  debitNotes         DebitNote[]
+  purchaseReturns    PurchaseReturn[]
+  salesReturns       SalesReturn[]
+  fixedAssets        FixedAsset[]
+  assetDepreciations AssetDepreciation[]
+  qualityInspections QualityInspection[]
+  bankReconciliations BankReconciliation[]
+  cheques            Cheque[]
+  expenseCategories  ExpenseCategory[]
+  purchaseOrders     PurchaseOrder[]
+  goodsReceipts      GoodsReceipt[]
+  quotations         Quotation[]
+  billOfMaterials    BillOfMaterial[]
+  workOrders         WorkOrder[]
+  dataImportLogs     DataImportLog[]
+  printTemplates     PrintTemplate[]
+  numberingSeries    NumberingSeries[]
 
   @@map("organizations")
 }
@@ -418,6 +436,7 @@ enum AccountType {
   LIABILITY
   EQUITY
   REVENUE
+  INCOME
   EXPENSE
 }
 
@@ -431,6 +450,16 @@ enum JournalEntryType {
   SYSTEM
   ADJUSTMENT
   OPENING
+  DEPRECIATION
+  CREDIT_NOTE
+  DEBIT_NOTE
+  REVERSAL
+  EXPENSE
+  PURCHASE
+  SALE
+  SALARY
+  RECEIPT
+  PAYMENT
 }
 
 enum PaymentMode {
@@ -517,16 +546,21 @@ model JournalEntry {
   updatedAt      DateTime         @updatedAt @map("updated_at")
   deletedAt      DateTime?        @map("deleted_at")
 
-  organization     Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  fiscalYear       FiscalYear         @relation(fields: [fiscalYearId], references: [id])
-  lines            JournalEntryLine[]
-  salarySlips      SalarySlip[]
-  paymentVouchers  PaymentVoucher[]
-  receiptVouchers  ReceiptVoucher[]
-  paddyPurchases   PaddyPurchase[]
-  salesInvoices    SalesInvoice[]
-  stockAdjustments StockAdjustment[]
-  expenseClaims    ExpenseClaim[]
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  fiscalYear         FiscalYear           @relation(fields: [fiscalYearId], references: [id])
+  lines              JournalEntryLine[]
+  salarySlips        SalarySlip[]
+  paymentVouchers    PaymentVoucher[]
+  receiptVouchers    ReceiptVoucher[]
+  paddyPurchases     PaddyPurchase[]
+  salesInvoices      SalesInvoice[]
+  stockAdjustments   StockAdjustment[]
+  expenseClaims      ExpenseClaim[]
+  creditNotes        CreditNote[]
+  debitNotes         DebitNote[]
+  purchaseReturns    PurchaseReturn[]
+  salesReturns       SalesReturn[]
+  assetDepreciations AssetDepreciation[]
 
   @@unique([organizationId, entryNumber])
   @@index([organizationId, date])
@@ -566,10 +600,12 @@ model BankAccount {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  account         ChartOfAccount   @relation(fields: [accountId], references: [id])
-  paymentVouchers PaymentVoucher[]
-  receiptVouchers ReceiptVoucher[]
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account            ChartOfAccount      @relation(fields: [accountId], references: [id])
+  paymentVouchers    PaymentVoucher[]
+  receiptVouchers    ReceiptVoucher[]
+  reconciliations    BankReconciliation[]
+  cheques            Cheque[]
 
   @@index([organizationId])
   @@map("bank_accounts")
@@ -725,8 +761,12 @@ model Supplier {
   updatedAt      DateTime     @updatedAt @map("updated_at")
   deletedAt      DateTime?    @map("deleted_at")
 
-  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  paddyPurchases PaddyPurchase[]
+  organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paddyPurchases   PaddyPurchase[]
+  debitNotes       DebitNote[]
+  purchaseReturns  PurchaseReturn[]
+  purchaseOrders   PurchaseOrder[]
+  goodsReceipts    GoodsReceipt[]
 
   @@index([organizationId])
   @@map("suppliers")
@@ -745,13 +785,18 @@ model RiceVariety {
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 
-  organization      Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  paddyPurchases    PaddyPurchase[]
-  purchaseRates     PurchaseRate[]
-  productionBatches ProductionBatch[]  @relation("InputVariety")
-  productionOutputs ProductionOutput[] @relation("OutputVariety")
-  inventoryItems    InventoryItem[]
-  salesOrderItems   SalesOrderItem[]
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paddyPurchases     PaddyPurchase[]
+  purchaseRates      PurchaseRate[]
+  productionBatches  ProductionBatch[]   @relation("InputVariety")
+  productionOutputs  ProductionOutput[]  @relation("OutputVariety")
+  inventoryItems     InventoryItem[]
+  salesOrderItems    SalesOrderItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  goodsReceiptItems  GoodsReceiptItem[]
+  quotationItems     QuotationItem[]
+  bomOutputs         BillOfMaterial[]    @relation("BOMOutput")
+  bomInputs          BillOfMaterialItem[] @relation("BOMInput")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -789,13 +834,15 @@ model PaddyPurchase {
   updatedAt            DateTime      @updatedAt @map("updated_at")
   deletedAt            DateTime?     @map("deleted_at")
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  branch       Branch        @relation(fields: [branchId], references: [id])
-  supplier     Supplier      @relation(fields: [supplierId], references: [id])
-  riceVariety  RiceVariety   @relation(fields: [riceVarietyId], references: [id])
-  broker       Broker?       @relation(fields: [brokerId], references: [id])
-  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
-  qualityTests QualityTest[]
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch          Branch          @relation(fields: [branchId], references: [id])
+  supplier        Supplier        @relation(fields: [supplierId], references: [id])
+  riceVariety     RiceVariety     @relation(fields: [riceVarietyId], references: [id])
+  broker          Broker?         @relation(fields: [brokerId], references: [id])
+  journalEntry    JournalEntry?   @relation(fields: [journalEntryId], references: [id])
+  qualityTests    QualityTest[]
+  debitNotes      DebitNote[]
+  purchaseReturns PurchaseReturn[]
 
   @@unique([organizationId, purchaseNumber])
   @@index([organizationId, date])
@@ -978,6 +1025,7 @@ model Warehouse {
   stockAdjustments StockAdjustment[]
   salesOrderItems  SalesOrderItem[]
   deliveryChallans DeliveryChallan[]
+  goodsReceipts    GoodsReceipt[]
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -1117,6 +1165,9 @@ model Customer {
   salesOrders      SalesOrder[]
   salesInvoices    SalesInvoice[]
   deliveryChallans DeliveryChallan[]
+  creditNotes      CreditNote[]
+  salesReturns     SalesReturn[]
+  quotations       Quotation[]
 
   @@index([organizationId])
   @@map("customers")
@@ -1147,6 +1198,7 @@ model SalesOrder {
   items            SalesOrderItem[]
   salesInvoices    SalesInvoice[]
   deliveryChallans DeliveryChallan[]
+  salesReturns     SalesReturn[]
 
   @@unique([organizationId, orderNumber])
   @@index([organizationId, date])
@@ -1196,6 +1248,8 @@ model SalesInvoice {
   salesOrder   SalesOrder?   @relation(fields: [salesOrderId], references: [id])
   customer     Customer      @relation(fields: [customerId], references: [id])
   journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+  creditNotes  CreditNote[]
+  salesReturns SalesReturn[]
 
   @@unique([organizationId, invoiceNumber])
   @@index([organizationId, date])
@@ -1509,4 +1563,675 @@ model FileAttachment {
   @@index([entityType, entityId])
   @@index([organizationId])
   @@map("file_attachments")
+}
+
+// ============================================================================
+// CREDIT & DEBIT NOTES
+// ============================================================================
+
+enum NoteStatus {
+  DRAFT
+  CONFIRMED
+  CANCELLED
+}
+
+model CreditNote {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  noteNumber     String     @map("note_number")
+  date           DateTime   @db.Date
+  customerId     String     @map("customer_id") @db.Uuid
+  salesInvoiceId String?    @map("sales_invoice_id") @db.Uuid
+  totalAmount    Decimal    @map("total_amount") @db.Decimal(18, 4)
+  taxAmount      Decimal    @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount      Decimal    @map("net_amount") @db.Decimal(18, 4)
+  reason         String?
+  narration      String?
+  status         NoteStatus @default(DRAFT)
+  journalEntryId String?    @map("journal_entry_id") @db.Uuid
+  createdBy      String?    @map("created_by") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  deletedAt      DateTime?  @map("deleted_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  salesInvoice SalesInvoice? @relation(fields: [salesInvoiceId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, noteNumber])
+  @@index([organizationId, date])
+  @@map("credit_notes")
+}
+
+model DebitNote {
+  id             String     @id @default(uuid()) @db.Uuid
+  organizationId String     @map("organization_id") @db.Uuid
+  noteNumber     String     @map("note_number")
+  date           DateTime   @db.Date
+  supplierId     String     @map("supplier_id") @db.Uuid
+  purchaseId     String?    @map("purchase_id") @db.Uuid
+  totalAmount    Decimal    @map("total_amount") @db.Decimal(18, 4)
+  taxAmount      Decimal    @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount      Decimal    @map("net_amount") @db.Decimal(18, 4)
+  reason         String?
+  narration      String?
+  status         NoteStatus @default(DRAFT)
+  journalEntryId String?    @map("journal_entry_id") @db.Uuid
+  createdBy      String?    @map("created_by") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+  deletedAt      DateTime?  @map("deleted_at")
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier       Supplier      @relation(fields: [supplierId], references: [id])
+  paddyPurchase  PaddyPurchase? @relation(fields: [purchaseId], references: [id])
+  journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, noteNumber])
+  @@index([organizationId, date])
+  @@map("debit_notes")
+}
+
+// ============================================================================
+// PURCHASE & SALES RETURNS
+// ============================================================================
+
+enum ReturnStatus {
+  DRAFT
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+
+model PurchaseReturn {
+  id              String       @id @default(uuid()) @db.Uuid
+  organizationId  String       @map("organization_id") @db.Uuid
+  returnNumber    String       @map("return_number")
+  date            DateTime     @db.Date
+  supplierId      String       @map("supplier_id") @db.Uuid
+  purchaseId      String?      @map("purchase_id") @db.Uuid
+  warehouseId     String?      @map("warehouse_id") @db.Uuid
+  riceVarietyId   String?      @map("rice_variety_id") @db.Uuid
+  quantity        Decimal      @db.Decimal(18, 4)
+  rate            Decimal      @db.Decimal(18, 4)
+  totalAmount     Decimal      @map("total_amount") @db.Decimal(18, 4)
+  reason          String?
+  narration       String?
+  status          ReturnStatus @default(DRAFT)
+  journalEntryId  String?      @map("journal_entry_id") @db.Uuid
+  createdBy       String?      @map("created_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  deletedAt       DateTime?    @map("deleted_at")
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+  paddyPurchase PaddyPurchase? @relation(fields: [purchaseId], references: [id])
+  journalEntry  JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, returnNumber])
+  @@index([organizationId, date])
+  @@map("purchase_returns")
+}
+
+model SalesReturn {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  returnNumber   String       @map("return_number")
+  date           DateTime     @db.Date
+  customerId     String       @map("customer_id") @db.Uuid
+  salesOrderId   String?      @map("sales_order_id") @db.Uuid
+  invoiceId      String?      @map("invoice_id") @db.Uuid
+  warehouseId    String?      @map("warehouse_id") @db.Uuid
+  riceVarietyId  String?      @map("rice_variety_id") @db.Uuid
+  quantity       Decimal      @db.Decimal(18, 4)
+  rate           Decimal      @db.Decimal(18, 4)
+  totalAmount    Decimal      @map("total_amount") @db.Decimal(18, 4)
+  reason         String?
+  narration      String?
+  status         ReturnStatus @default(DRAFT)
+  journalEntryId String?      @map("journal_entry_id") @db.Uuid
+  createdBy      String?      @map("created_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  salesOrder   SalesOrder?   @relation(fields: [salesOrderId], references: [id])
+  invoice      SalesInvoice? @relation(fields: [invoiceId], references: [id])
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@unique([organizationId, returnNumber])
+  @@index([organizationId, date])
+  @@map("sales_returns")
+}
+
+// ============================================================================
+// PURCHASE ORDERS & GOODS RECEIPT
+// ============================================================================
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id             String              @id @default(uuid()) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  orderNumber    String              @map("order_number")
+  date           DateTime            @db.Date
+  supplierId     String              @map("supplier_id") @db.Uuid
+  branchId       String?             @map("branch_id") @db.Uuid
+  totalAmount    Decimal             @default(0) @map("total_amount") @db.Decimal(18, 4)
+  discount       Decimal             @default(0) @db.Decimal(18, 4)
+  taxAmount      Decimal             @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount      Decimal             @default(0) @map("net_amount") @db.Decimal(18, 4)
+  expectedDate   DateTime?           @map("expected_date") @db.Date
+  terms          String?
+  narration      String?
+  status         PurchaseOrderStatus @default(DRAFT)
+  createdBy      String?             @map("created_by") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+  deletedAt      DateTime?           @map("deleted_at")
+
+  organization  Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  supplier      Supplier        @relation(fields: [supplierId], references: [id])
+  items         PurchaseOrderItem[]
+  goodsReceipts GoodsReceipt[]
+
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, date])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String  @id @default(uuid()) @db.Uuid
+  purchaseOrderId String  @map("purchase_order_id") @db.Uuid
+  riceVarietyId   String  @map("rice_variety_id") @db.Uuid
+  quantity        Decimal @db.Decimal(18, 4)
+  unit            String  @default("KG")
+  rate            Decimal @db.Decimal(18, 4)
+  amount          Decimal @db.Decimal(18, 4)
+  receivedQty     Decimal @default(0) @map("received_qty") @db.Decimal(18, 4)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  riceVariety   RiceVariety   @relation(fields: [riceVarietyId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@map("purchase_order_items")
+}
+
+model GoodsReceipt {
+  id              String        @id @default(uuid()) @db.Uuid
+  organizationId  String        @map("organization_id") @db.Uuid
+  receiptNumber   String        @map("receipt_number")
+  date            DateTime      @db.Date
+  purchaseOrderId String?       @map("purchase_order_id") @db.Uuid
+  supplierId      String        @map("supplier_id") @db.Uuid
+  warehouseId     String        @map("warehouse_id") @db.Uuid
+  totalQuantity   Decimal       @map("total_quantity") @db.Decimal(18, 4)
+  inspectionStatus String?      @map("inspection_status")
+  notes           String?
+  narration       String?
+  createdBy       String?       @map("created_by") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier       @relation(fields: [supplierId], references: [id])
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id])
+  items         GoodsReceiptItem[]
+
+  @@unique([organizationId, receiptNumber])
+  @@index([organizationId, date])
+  @@map("goods_receipts")
+}
+
+model GoodsReceiptItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  goodsReceiptId String  @map("goods_receipt_id") @db.Uuid
+  riceVarietyId  String  @map("rice_variety_id") @db.Uuid
+  quantity       Decimal @db.Decimal(18, 4)
+  unit           String  @default("KG")
+  lotNumber      String? @map("lot_number")
+  qualityGrade   QualityGrade? @map("quality_grade")
+  moisture       Decimal? @db.Decimal(5, 2)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  riceVariety  RiceVariety  @relation(fields: [riceVarietyId], references: [id])
+
+  @@index([goodsReceiptId])
+  @@map("goods_receipt_items")
+}
+
+// ============================================================================
+// QUOTATIONS
+// ============================================================================
+
+enum QuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CONVERTED
+}
+
+model Quotation {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  quotationNumber String         @map("quotation_number")
+  date           DateTime        @db.Date
+  validUntil     DateTime?       @map("valid_until") @db.Date
+  customerId     String          @map("customer_id") @db.Uuid
+  totalAmount    Decimal         @default(0) @map("total_amount") @db.Decimal(18, 4)
+  discount       Decimal         @default(0) @db.Decimal(18, 4)
+  taxAmount      Decimal         @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount      Decimal         @default(0) @map("net_amount") @db.Decimal(18, 4)
+  terms          String?
+  narration      String?
+  status         QuotationStatus @default(DRAFT)
+  salesOrderId   String?         @map("sales_order_id") @db.Uuid
+  createdBy      String?         @map("created_by") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  deletedAt      DateTime?       @map("deleted_at")
+
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer         @relation(fields: [customerId], references: [id])
+  items        QuotationItem[]
+
+  @@unique([organizationId, quotationNumber])
+  @@index([organizationId, date])
+  @@map("quotations")
+}
+
+model QuotationItem {
+  id           String  @id @default(uuid()) @db.Uuid
+  quotationId  String  @map("quotation_id") @db.Uuid
+  riceVarietyId String @map("rice_variety_id") @db.Uuid
+  quantity     Decimal @db.Decimal(18, 4)
+  unit         String  @default("KG")
+  rate         Decimal @db.Decimal(18, 4)
+  amount       Decimal @db.Decimal(18, 4)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  quotation   Quotation   @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  riceVariety RiceVariety @relation(fields: [riceVarietyId], references: [id])
+
+  @@index([quotationId])
+  @@map("quotation_items")
+}
+
+// ============================================================================
+// FIXED ASSETS
+// ============================================================================
+
+enum AssetStatus {
+  ACTIVE
+  DISPOSED
+  WRITTEN_OFF
+  UNDER_MAINTENANCE
+}
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+  DOUBLE_DECLINING
+  UNITS_OF_PRODUCTION
+}
+
+model FixedAsset {
+  id                  String             @id @default(uuid()) @db.Uuid
+  organizationId      String             @map("organization_id") @db.Uuid
+  assetCode           String             @map("asset_code")
+  name                String
+  description         String?
+  category            String
+  location            String?
+  branchId            String?            @map("branch_id") @db.Uuid
+  purchaseDate        DateTime           @map("purchase_date") @db.Date
+  purchasePrice       Decimal            @map("purchase_price") @db.Decimal(18, 4)
+  salvageValue        Decimal            @default(0) @map("salvage_value") @db.Decimal(18, 4)
+  usefulLifeYears     Int                @map("useful_life_years")
+  depreciationMethod  DepreciationMethod @default(STRAIGHT_LINE) @map("depreciation_method")
+  accumulatedDepr     Decimal            @default(0) @map("accumulated_depr") @db.Decimal(18, 4)
+  currentValue        Decimal            @map("current_value") @db.Decimal(18, 4)
+  assetAccountId      String?            @map("asset_account_id") @db.Uuid
+  deprExpenseAccountId String?           @map("depr_expense_account_id") @db.Uuid
+  accumDeprAccountId  String?            @map("accum_depr_account_id") @db.Uuid
+  status              AssetStatus        @default(ACTIVE)
+  disposalDate        DateTime?          @map("disposal_date") @db.Date
+  disposalAmount      Decimal?           @map("disposal_amount") @db.Decimal(18, 4)
+  serialNumber        String?            @map("serial_number")
+  warrantyExpiry      DateTime?          @map("warranty_expiry") @db.Date
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+  deletedAt           DateTime?          @map("deleted_at")
+
+  organization   Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  depreciations  AssetDepreciation[]
+
+  @@unique([organizationId, assetCode])
+  @@index([organizationId])
+  @@map("fixed_assets")
+}
+
+model AssetDepreciation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  assetId        String   @map("asset_id") @db.Uuid
+  period         String
+  date           DateTime @db.Date
+  amount         Decimal  @db.Decimal(18, 4)
+  accumulatedTotal Decimal @map("accumulated_total") @db.Decimal(18, 4)
+  bookValue      Decimal  @map("book_value") @db.Decimal(18, 4)
+  journalEntryId String?  @map("journal_entry_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  asset        FixedAsset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  journalEntry JournalEntry? @relation(fields: [journalEntryId], references: [id])
+
+  @@index([assetId])
+  @@map("asset_depreciations")
+}
+
+// ============================================================================
+// QUALITY CONTROL
+// ============================================================================
+
+enum InspectionStatus {
+  PENDING_INSPECTION
+  PASSED
+  FAILED
+  CONDITIONAL
+}
+
+model QualityInspection {
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  inspectionNumber String           @map("inspection_number")
+  date             DateTime         @db.Date
+  referenceType    String           @map("reference_type")
+  referenceId      String           @map("reference_id") @db.Uuid
+  riceVarietyId    String?          @map("rice_variety_id") @db.Uuid
+  lotNumber        String?          @map("lot_number")
+  sampleSize       Decimal?         @map("sample_size") @db.Decimal(18, 4)
+  moisture         Decimal?         @db.Decimal(5, 2)
+  brokenPercentage Decimal?         @map("broken_percentage") @db.Decimal(5, 2)
+  foreignMatter    Decimal?         @map("foreign_matter") @db.Decimal(5, 2)
+  chalkyGrains     Decimal?         @map("chalky_grains") @db.Decimal(5, 2)
+  damagedGrains    Decimal?         @map("damaged_grains") @db.Decimal(5, 2)
+  discolored       Decimal?         @db.Decimal(5, 2)
+  grainLength      Decimal?         @map("grain_length") @db.Decimal(5, 2)
+  grainWidth       Decimal?         @map("grain_width") @db.Decimal(5, 2)
+  aroma            String?
+  cookingQuality   String?          @map("cooking_quality")
+  grade            QualityGrade?
+  status           InspectionStatus @default(PENDING_INSPECTION)
+  inspectedBy      String?          @map("inspected_by") @db.Uuid
+  remarks          String?
+  certificateNumber String?         @map("certificate_number")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, inspectionNumber])
+  @@index([organizationId, date])
+  @@index([referenceType, referenceId])
+  @@map("quality_inspections")
+}
+
+// ============================================================================
+// BANK MANAGEMENT
+// ============================================================================
+
+enum ReconciliationStatus {
+  PENDING_RECONCILIATION
+  MATCHED
+  UNMATCHED
+  PARTIALLY_MATCHED
+}
+
+enum ChequeStatus {
+  ISSUED
+  CLEARED
+  BOUNCED
+  CANCELLED
+  DEPOSITED
+  RETURNED
+}
+
+model BankReconciliation {
+  id             String               @id @default(uuid()) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  bankAccountId  String               @map("bank_account_id") @db.Uuid
+  date           DateTime             @db.Date
+  statementDate  DateTime             @map("statement_date") @db.Date
+  description    String?
+  debit          Decimal              @default(0) @db.Decimal(18, 4)
+  credit         Decimal              @default(0) @db.Decimal(18, 4)
+  balance        Decimal              @default(0) @db.Decimal(18, 4)
+  referenceNumber String?             @map("reference_number")
+  status         ReconciliationStatus @default(PENDING_RECONCILIATION)
+  matchedEntryId String?              @map("matched_entry_id") @db.Uuid
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount  @relation(fields: [bankAccountId], references: [id])
+
+  @@index([organizationId, bankAccountId])
+  @@map("bank_reconciliations")
+}
+
+model Cheque {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  bankAccountId  String       @map("bank_account_id") @db.Uuid
+  chequeNumber   String       @map("cheque_number")
+  date           DateTime     @db.Date
+  amount         Decimal      @db.Decimal(18, 4)
+  payee          String?
+  issuedTo       String?      @map("issued_to")
+  partyType      String?      @map("party_type")
+  partyId        String?      @map("party_id") @db.Uuid
+  status         ChequeStatus @default(ISSUED)
+  clearanceDate  DateTime?    @map("clearance_date") @db.Date
+  bounceReason   String?      @map("bounce_reason")
+  narration      String?
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bankAccount  BankAccount  @relation(fields: [bankAccountId], references: [id])
+
+  @@index([organizationId, bankAccountId])
+  @@map("cheques")
+}
+
+// ============================================================================
+// EXPENSE CATEGORIES
+// ============================================================================
+
+model ExpenseCategory {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  name           String
+  code           String
+  description    String?
+  accountId      String? @map("account_id") @db.Uuid
+  parentId       String? @map("parent_id") @db.Uuid
+  isActive       Boolean @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent       ExpenseCategory?  @relation("ExpenseCategoryTree", fields: [parentId], references: [id])
+  children     ExpenseCategory[] @relation("ExpenseCategoryTree")
+
+  @@unique([organizationId, code])
+  @@index([organizationId])
+  @@map("expense_categories")
+}
+
+// ============================================================================
+// BILL OF MATERIALS & WORK ORDERS
+// ============================================================================
+
+enum WorkOrderStatus {
+  DRAFT_WO
+  RELEASED
+  IN_PROGRESS_WO
+  COMPLETED_WO
+  CANCELLED_WO
+}
+
+model BillOfMaterial {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  name           String
+  code           String
+  outputVarietyId String @map("output_variety_id") @db.Uuid
+  outputQuantity Decimal @map("output_quantity") @db.Decimal(18, 4)
+  processType    ProcessType @map("process_type")
+  isActive       Boolean @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization  Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  outputVariety RiceVariety         @relation("BOMOutput", fields: [outputVarietyId], references: [id])
+  items         BillOfMaterialItem[]
+  workOrders    WorkOrder[]
+
+  @@unique([organizationId, code])
+  @@map("bill_of_materials")
+}
+
+model BillOfMaterialItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  bomId       String  @map("bom_id") @db.Uuid
+  riceVarietyId String @map("rice_variety_id") @db.Uuid
+  quantity    Decimal @db.Decimal(18, 4)
+  unit        String  @default("KG")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  bom         BillOfMaterial @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  riceVariety RiceVariety    @relation("BOMInput", fields: [riceVarietyId], references: [id])
+
+  @@index([bomId])
+  @@map("bom_items")
+}
+
+model WorkOrder {
+  id             String          @id @default(uuid()) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  orderNumber    String          @map("order_number")
+  date           DateTime        @db.Date
+  bomId          String          @map("bom_id") @db.Uuid
+  plannedQuantity Decimal        @map("planned_quantity") @db.Decimal(18, 4)
+  actualQuantity Decimal?        @map("actual_quantity") @db.Decimal(18, 4)
+  startDate      DateTime?       @map("start_date") @db.Date
+  endDate        DateTime?       @map("end_date") @db.Date
+  warehouseId    String?         @map("warehouse_id") @db.Uuid
+  status         WorkOrderStatus @default(DRAFT_WO)
+  notes          String?
+  createdBy      String?         @map("created_by") @db.Uuid
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bom          BillOfMaterial @relation(fields: [bomId], references: [id])
+
+  @@unique([organizationId, orderNumber])
+  @@index([organizationId, date])
+  @@map("work_orders")
+}
+
+// ============================================================================
+// DATA IMPORT & EXPORT
+// ============================================================================
+
+enum ImportStatus {
+  PENDING_IMPORT
+  PROCESSING
+  COMPLETED_IMPORT
+  FAILED_IMPORT
+  PARTIALLY_COMPLETED
+}
+
+model DataImportLog {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  importType     String       @map("import_type")
+  fileName       String       @map("file_name")
+  totalRows      Int          @map("total_rows")
+  successRows    Int          @default(0) @map("success_rows")
+  failedRows     Int          @default(0) @map("failed_rows")
+  errors         Json?
+  status         ImportStatus @default(PENDING_IMPORT)
+  importedBy     String?      @map("imported_by") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at")
+  completedAt    DateTime?    @map("completed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("data_import_logs")
+}
+
+// ============================================================================
+// PRINT TEMPLATES & NUMBERING
+// ============================================================================
+
+model PrintTemplate {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  name           String
+  entityType     String  @map("entity_type")
+  template       String  @db.Text
+  isDefault      Boolean @default(false) @map("is_default")
+  paperSize      String  @default("A4") @map("paper_size")
+  orientation    String  @default("portrait")
+  headerHtml     String? @map("header_html") @db.Text
+  footerHtml     String? @map("footer_html") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, entityType])
+  @@map("print_templates")
+}
+
+model NumberingSeries {
+  id             String  @id @default(uuid()) @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  entityType     String  @map("entity_type")
+  prefix         String
+  currentNumber  Int     @default(0) @map("current_number")
+  padLength      Int     @default(6) @map("pad_length")
+  suffix         String?
+  fiscalYearId   String? @map("fiscal_year_id") @db.Uuid
+  isActive       Boolean @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, entityType])
+  @@index([organizationId])
+  @@map("numbering_series")
 }

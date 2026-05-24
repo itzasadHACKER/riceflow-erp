@@ -16,6 +16,12 @@ import { TransportModule } from './modules/transport/transport.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { AssetsModule } from './modules/assets/assets.module';
+import { QualityControlModule } from './modules/quality-control/quality-control.module';
+import { BankManagementModule } from './modules/bank-management/bank-management.module';
+import { ExpenseModule } from './modules/expense/expense.module';
+import { DataImportModule } from './modules/data-import/data-import.module';
+import { ExportModule } from './modules/export/export.module';
 
 @Module({
   imports: [
@@ -44,6 +50,12 @@ import { SettingsModule } from './modules/settings/settings.module';
     CrmModule,
     ReportingModule,
     SettingsModule,
+    AssetsModule,
+    QualityControlModule,
+    BankManagementModule,
+    ExpenseModule,
+    DataImportModule,
+    ExportModule,
   ],
 })
 export class AppModule {}
