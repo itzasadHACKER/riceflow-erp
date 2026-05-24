@@ -152,9 +152,9 @@ export class MachineService {
   }
 
   // --- OEE Calculation ---
-  async getOEE(organizationId: string, machineId: string, startDate: string, endDate: string) {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+  async getOEE(organizationId: string, machineId: string, startDate?: string, endDate?: string) {
+    const end = endDate ? new Date(endDate) : new Date();
+    const start = startDate ? new Date(startDate) : new Date(end.getTime() - 30 * 24 * 60 * 60 * 1000);
     const totalHours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
 
     const downtimeLogs = await this.prisma.downtimeLog.findMany({
@@ -178,7 +178,7 @@ export class MachineService {
 
     return {
       machineId,
-      period: { start: startDate, end: endDate },
+      period: { start: start.toISOString(), end: end.toISOString() },
       totalHours,
       downtimeHours: totalDowntimeHours,
       availability: Math.round(availability * 100) / 100,

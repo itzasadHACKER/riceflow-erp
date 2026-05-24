@@ -56,14 +56,20 @@ export class CommissionService {
     if (!rule) return { commissionAmount: 0, rule: null };
 
     const amount = parseFloat(transactionAmount);
+
+    if (rule.minAmount && amount < Number(rule.minAmount)) {
+      return { transactionAmount: amount, commissionRate: 0, isPercentage: rule.isPercentage, commissionAmount: 0, rule, note: 'Transaction below minimum amount' };
+    }
+    if (rule.maxAmount && amount > Number(rule.maxAmount)) {
+      return { transactionAmount: amount, commissionRate: 0, isPercentage: rule.isPercentage, commissionAmount: 0, rule, note: 'Transaction exceeds maximum amount' };
+    }
+
     let commission: number;
     if (rule.isPercentage) {
       commission = (amount * Number(rule.rate)) / 100;
     } else {
       commission = Number(rule.rate);
     }
-    if (rule.minAmount && commission < Number(rule.minAmount)) commission = Number(rule.minAmount);
-    if (rule.maxAmount && commission > Number(rule.maxAmount)) commission = Number(rule.maxAmount);
 
     return {
       transactionAmount: amount,

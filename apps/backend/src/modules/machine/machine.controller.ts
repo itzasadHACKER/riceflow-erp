@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { createResponse } from '../../common/interfaces/api-response.interface';
@@ -36,11 +36,13 @@ export class MachineController {
 
   @Get('oee/:machineId')
   @ApiOperation({ summary: 'Get OEE for a machine' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
   async getOEE(
     @CurrentUser() user: JwtPayload,
     @Param('machineId') machineId: string,
-    @Query('startDate') startDate: string,
-    @Query('endDate') endDate: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
   ) {
     const result = await this.machineService.getOEE(user.organizationId, machineId, startDate, endDate);
     return createResponse(result);
@@ -53,9 +55,23 @@ export class MachineController {
     return createResponse(result);
   }
 
+  @Get('maintenance')
+  @ApiOperation({ summary: 'Get maintenance logs' })
+  async getMaintenanceLogs(@CurrentUser() user: JwtPayload, @Query('machineId') machineId?: string) {
+    const result = await this.machineService.getMaintenanceLogs(user.organizationId, machineId);
+    return createResponse(result);
+  }
+
+  @Get('spares/list')
+  @ApiOperation({ summary: 'List spare parts' })
+  async getSpares(@CurrentUser() user: JwtPayload, @Query('machineId') machineId?: string) {
+    const result = await this.machineService.getSpares(user.organizationId, machineId);
+    return createResponse(result);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get machine by ID' })
-  async getMachineById(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+  async getMachineById(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
     const result = await this.machineService.getMachineById(user.organizationId, id);
     return createResponse(result);
   }
@@ -64,7 +80,7 @@ export class MachineController {
   @ApiOperation({ summary: 'Update machine status' })
   async updateStatus(
     @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('status') status: string,
   ) {
     const result = await this.machineService.updateMachineStatus(user.organizationId, id, status);
@@ -78,24 +94,10 @@ export class MachineController {
     return createResponse(result);
   }
 
-  @Get('maintenance/logs')
-  @ApiOperation({ summary: 'Get maintenance logs' })
-  async getMaintenanceLogs(@CurrentUser() user: JwtPayload, @Query('machineId') machineId?: string) {
-    const result = await this.machineService.getMaintenanceLogs(user.organizationId, machineId);
-    return createResponse(result);
-  }
-
   @Post('spares')
   @ApiOperation({ summary: 'Add spare part' })
   async createSpare(@CurrentUser() user: JwtPayload, @Body() dto: CreateSpareDto) {
     const result = await this.machineService.createSpare(user.organizationId, dto);
-    return createResponse(result);
-  }
-
-  @Get('spares/list')
-  @ApiOperation({ summary: 'List spare parts' })
-  async getSpares(@CurrentUser() user: JwtPayload, @Query('machineId') machineId?: string) {
-    const result = await this.machineService.getSpares(user.organizationId, machineId);
     return createResponse(result);
   }
 
@@ -110,7 +112,7 @@ export class MachineController {
   @ApiOperation({ summary: 'Resolve downtime' })
   async resolveDowntime(
     @CurrentUser() user: JwtPayload,
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body('resolution') resolution: string,
   ) {
     const result = await this.machineService.resolveDowntime(user.organizationId, id, resolution);

@@ -1,5 +1,6 @@
-import { IsString, IsOptional, IsArray, IsInt, IsBoolean, IsEnum } from 'class-validator';
+import { IsString, IsOptional, IsArray, IsInt, IsBoolean, IsEnum, ValidateNested } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class WorkflowStepDto {
   @ApiProperty()
@@ -40,8 +41,10 @@ export class CreateWorkflowDefinitionDto {
   @IsString()
   description?: string;
 
-  @ApiProperty({ type: [Object] })
+  @ApiProperty({ type: [WorkflowStepDto] })
   @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => WorkflowStepDto)
   steps!: WorkflowStepDto[];
 
   @ApiPropertyOptional()

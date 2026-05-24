@@ -14,13 +14,20 @@ export class WorkflowService {
   constructor(private readonly prisma: PrismaService) {}
 
   async createDefinition(organizationId: string, dto: CreateWorkflowDefinitionDto) {
+    const stepsJson = dto.steps.map((s) => ({
+      name: s.name,
+      stepNumber: s.stepNumber,
+      approverRole: s.approverRole,
+      approverId: s.approverId,
+      condition: s.condition,
+    }));
     return this.prisma.workflowDefinition.create({
       data: {
         organizationId,
         name: dto.name,
         entityType: dto.entityType,
         description: dto.description,
-        steps: dto.steps as unknown as Prisma.InputJsonValue,
+        steps: stepsJson as unknown as Prisma.InputJsonValue,
         autoEscalateHours: dto.autoEscalateHours,
       },
     });
@@ -61,7 +68,7 @@ export class WorkflowService {
           entityId: dto.entityId,
           currentStep: 0,
           status: 'PENDING',
-          initiatedBy,
+          initiatedBy: initiatedBy ?? null,
         },
       });
 
@@ -71,8 +78,8 @@ export class WorkflowService {
             organizationId,
             workflowInstanceId: instance.id,
             stepNumber: step.stepNumber,
-            approverId: step.approverId,
-            status: step.stepNumber === 0 ? 'PENDING' : 'PENDING',
+            approverId: step.approverId ?? null,
+            status: 'PENDING',
           },
         });
       }
