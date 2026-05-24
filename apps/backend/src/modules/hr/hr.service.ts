@@ -5,6 +5,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { FinanceService } from '../finance/finance.service';
 import { CreateEmployeeDto, UpdateEmployeeDto } from './dto/employee.dto';
 import {
@@ -650,5 +651,242 @@ export class HrService {
     ]);
 
     return { data, total, page, limit };
+  }
+
+  // ============================================================================
+  // EMPLOYEE DOCUMENTS
+  // ============================================================================
+
+  async addEmployeeDocument(
+    organizationId: string,
+    employeeId: string,
+    data: { documentType: string; title: string; fileUrl?: string; fileName?: string; expiryDate?: string; notes?: string },
+  ) {
+    return this.prisma.employeeDocument.create({
+      data: {
+        organizationId,
+        employeeId,
+        documentType: data.documentType,
+        title: data.title,
+        fileUrl: data.fileUrl,
+        fileName: data.fileName,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
+        notes: data.notes,
+      },
+    });
+  }
+
+  async getEmployeeDocuments(organizationId: string, employeeId: string) {
+    return this.prisma.employeeDocument.findMany({
+      where: { organizationId, employeeId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async verifyDocument(organizationId: string, docId: string, verifiedBy: string) {
+    return this.prisma.employeeDocument.update({
+      where: { id: docId },
+      data: { isVerified: true, verifiedBy },
+    });
+  }
+
+  async getExpiringDocuments(organizationId: string, daysAhead: number) {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+    return this.prisma.employeeDocument.findMany({
+      where: {
+        organizationId,
+        expiryDate: { lte: futureDate, gte: new Date() },
+      },
+      include: { employee: true },
+      orderBy: { expiryDate: 'asc' },
+    });
+  }
+
+  // ============================================================================
+  // EMPLOYEE LOANS
+  // ============================================================================
+
+  async createLoan(
+    organizationId: string,
+    data: {
+      employeeId: string;
+      loanType: string;
+      principalAmount: string;
+      interestRate?: string;
+      monthlyDeduction: string;
+      disbursementDate: string;
+      approvedBy?: string;
+      notes?: string;
+    },
+  ) {
+    const series = await this.prisma.numberingSeries.findFirst({
+      where: { organizationId, entityType: 'LOAN' },
+    });
+    const currentNumber = series ? series.currentNumber + 1 : 1;
+    const loanNumber = `LN-${String(currentNumber).padStart(6, '0')}`;
+    if (series) {
+      await this.prisma.numberingSeries.update({ where: { id: series.id }, data: { currentNumber } });
+    }
+
+    const principal = parseFloat(data.principalAmount);
+    const rate = parseFloat(data.interestRate ?? '0');
+    const totalRepayable = principal + (principal * rate) / 100;
+
+    return this.prisma.employeeLoan.create({
+      data: {
+        organizationId,
+        employeeId: data.employeeId,
+        loanNumber,
+        loanType: data.loanType,
+        principalAmount: new Prisma.Decimal(principal),
+        interestRate: new Prisma.Decimal(rate),
+        totalRepayable: new Prisma.Decimal(totalRepayable),
+        monthlyDeduction: new Prisma.Decimal(data.monthlyDeduction),
+        remainingAmount: new Prisma.Decimal(totalRepayable),
+        disbursementDate: new Date(data.disbursementDate),
+        approvedBy: data.approvedBy,
+        notes: data.notes,
+      },
+    });
+  }
+
+  async getLoans(organizationId: string, employeeId?: string) {
+    const where: Prisma.EmployeeLoanWhereInput = { organizationId };
+    if (employeeId) where.employeeId = employeeId;
+    return this.prisma.employeeLoan.findMany({
+      where,
+      include: { employee: true, repayments: { orderBy: { paymentDate: 'desc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async recordLoanRepayment(loanId: string, amount: string, paymentDate: string, salarySlipId?: string) {
+    const loan = await this.prisma.employeeLoan.findFirst({ where: { id: loanId } });
+    if (!loan) throw new NotFoundException('Loan not found');
+
+    const paymentAmount = parseFloat(amount);
+    const interest = (Number(loan.remainingAmount) * Number(loan.interestRate)) / (100 * 12);
+    const principalPaid = paymentAmount - interest;
+    const newRemaining = Number(loan.remainingAmount) - principalPaid;
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.loanRepayment.create({
+        data: {
+          loanId,
+          amount: new Prisma.Decimal(paymentAmount),
+          principal: new Prisma.Decimal(principalPaid > 0 ? principalPaid : paymentAmount),
+          interest: new Prisma.Decimal(interest > 0 ? interest : 0),
+          paymentDate: new Date(paymentDate),
+          salarySlipId,
+        },
+      });
+
+      return tx.employeeLoan.update({
+        where: { id: loanId },
+        data: {
+          totalPaid: { increment: new Prisma.Decimal(paymentAmount) },
+          remainingAmount: new Prisma.Decimal(newRemaining > 0 ? newRemaining : 0),
+          status: newRemaining <= 0 ? 'FULLY_PAID' : 'ACTIVE_LOAN',
+        },
+      });
+    });
+  }
+
+  // ============================================================================
+  // PERFORMANCE REVIEWS
+  // ============================================================================
+
+  async createPerformanceReview(
+    organizationId: string,
+    data: {
+      employeeId: string;
+      reviewPeriod: string;
+      reviewDate: string;
+      reviewerId?: string;
+      goals?: Record<string, unknown>[];
+      kpis?: Record<string, unknown>[];
+      strengths?: string;
+      improvements?: string;
+      comments?: string;
+    },
+  ) {
+    return this.prisma.performanceReview.create({
+      data: {
+        organizationId,
+        employeeId: data.employeeId,
+        reviewPeriod: data.reviewPeriod,
+        reviewDate: new Date(data.reviewDate),
+        reviewerId: data.reviewerId,
+        goals: (data.goals ?? []) as Prisma.InputJsonValue,
+        kpis: (data.kpis ?? []) as Prisma.InputJsonValue,
+        strengths: data.strengths,
+        improvements: data.improvements,
+        comments: data.comments,
+      },
+    });
+  }
+
+  async getPerformanceReviews(organizationId: string, employeeId?: string) {
+    const where: Prisma.PerformanceReviewWhereInput = { organizationId };
+    if (employeeId) where.employeeId = employeeId;
+    return this.prisma.performanceReview.findMany({
+      where,
+      include: { employee: true },
+      orderBy: { reviewDate: 'desc' },
+    });
+  }
+
+  async completeReview(organizationId: string, reviewId: string, overallRating: string) {
+    return this.prisma.performanceReview.update({
+      where: { id: reviewId },
+      data: { status: 'COMPLETED', overallRating: new Prisma.Decimal(overallRating) },
+    });
+  }
+
+  // ============================================================================
+  // FINAL SETTLEMENT
+  // ============================================================================
+
+  async createFinalSettlement(
+    organizationId: string,
+    data: {
+      employeeId: string;
+      lastWorkingDay: string;
+      notes?: string;
+    },
+  ) {
+    const employee = await this.prisma.employee.findFirst({
+      where: { id: data.employeeId, organizationId },
+      include: { loans: { where: { status: 'ACTIVE_LOAN' } }, advances: { where: { status: 'APPROVED' } } },
+    });
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    const pendingSalary = Number(employee.baseSalary);
+    const loanBalance = employee.loans.reduce((s, l) => s + Number(l.remainingAmount), 0);
+    const advanceBalance = employee.advances.reduce((s, a) => s + Number(a.amount), 0);
+    const netPayable = pendingSalary - loanBalance - advanceBalance;
+
+    return this.prisma.finalSettlement.create({
+      data: {
+        organizationId,
+        employeeId: data.employeeId,
+        settlementDate: new Date(),
+        lastWorkingDay: new Date(data.lastWorkingDay),
+        pendingSalary: new Prisma.Decimal(pendingSalary),
+        loanBalance: new Prisma.Decimal(loanBalance),
+        advanceBalance: new Prisma.Decimal(advanceBalance),
+        netPayable: new Prisma.Decimal(netPayable > 0 ? netPayable : 0),
+        notes: data.notes,
+      },
+    });
+  }
+
+  async getFinalSettlements(organizationId: string) {
+    return this.prisma.finalSettlement.findMany({
+      where: { organizationId },
+      include: { employee: true },
+      orderBy: { settlementDate: 'desc' },
+    });
   }
 }

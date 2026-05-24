@@ -22,6 +22,15 @@ import { BankManagementModule } from './modules/bank-management/bank-management.
 import { ExpenseModule } from './modules/expense/expense.module';
 import { DataImportModule } from './modules/data-import/data-import.module';
 import { ExportModule } from './modules/export/export.module';
+import { WorkflowModule } from './modules/workflow/workflow.module';
+import { BudgetingModule } from './modules/budgeting/budgeting.module';
+import { MachineModule } from './modules/machine/machine.module';
+import { DocumentManagementModule } from './modules/document-management/document-management.module';
+import { CurrencyModule } from './modules/currency/currency.module';
+import { CommissionModule } from './modules/commission/commission.module';
+import { MarketIntelligenceModule } from './modules/market-intelligence/market-intelligence.module';
+import { ExportSalesModule } from './modules/export-sales/export-sales.module';
+import { IntegrationModule } from './modules/integration/integration.module';
 
 @Module({
   imports: [
@@ -56,6 +65,15 @@ import { ExportModule } from './modules/export/export.module';
     ExpenseModule,
     DataImportModule,
     ExportModule,
+    WorkflowModule,
+    BudgetingModule,
+    MachineModule,
+    DocumentManagementModule,
+    CurrencyModule,
+    CommissionModule,
+    MarketIntelligenceModule,
+    ExportSalesModule,
+    IntegrationModule,
   ],
 })
 export class AppModule {}

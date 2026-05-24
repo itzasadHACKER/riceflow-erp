@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Body,
   Param,
@@ -231,5 +232,37 @@ export class CrmController {
   async getPendingFollowUps(@CurrentUser() user: JwtPayload) {
     const data = await this.crmService.getPendingFollowUps(user.organizationId);
     return createResponse(data);
+  }
+
+  @Post('meetings')
+  @ApiOperation({ summary: 'Create meeting' })
+  async createMeeting(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { title: string; scheduledAt: string; meetingType: string; duration?: number; location?: string; entityType?: string; entityId?: string; agenda?: string },
+  ) {
+    const result = await this.crmService.createMeeting(user.organizationId, dto, user.sub);
+    return createResponse(result);
+  }
+
+  @Get('meetings')
+  @ApiOperation({ summary: 'List meetings' })
+  async getMeetings(
+    @CurrentUser() user: JwtPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const result = await this.crmService.getMeetings(user.organizationId, startDate, endDate);
+    return createResponse(result);
+  }
+
+  @Put('meetings/:id/complete')
+  @ApiOperation({ summary: 'Complete meeting' })
+  async completeMeeting(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body('minutes') minutes: string,
+  ) {
+    const result = await this.crmService.completeMeeting(user.organizationId, id, minutes);
+    return createResponse(result);
   }
 }

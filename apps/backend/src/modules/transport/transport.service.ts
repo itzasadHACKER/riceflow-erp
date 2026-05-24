@@ -218,4 +218,102 @@ export class TransportService {
       byVehicle: Object.values(byVehicle),
     };
   }
+
+  // ============================================================================
+  // FUEL MANAGEMENT
+  // ============================================================================
+
+  async createFuelLog(
+    organizationId: string,
+    data: {
+      vehicleId: string;
+      date: string;
+      fuelType: string;
+      quantity: string;
+      unitPrice: string;
+      odometerReading?: string;
+      station?: string;
+      receiptNumber?: string;
+      driverId?: string;
+    },
+  ) {
+    const qty = parseFloat(data.quantity);
+    const price = parseFloat(data.unitPrice);
+    return this.prisma.fuelLog.create({
+      data: {
+        organizationId,
+        vehicleId: data.vehicleId,
+        date: new Date(data.date),
+        fuelType: data.fuelType,
+        quantity: new Prisma.Decimal(qty),
+        unitPrice: new Prisma.Decimal(price),
+        totalCost: new Prisma.Decimal(qty * price),
+        odometerReading: data.odometerReading ? new Prisma.Decimal(data.odometerReading) : undefined,
+        station: data.station,
+        receiptNumber: data.receiptNumber,
+        driverId: data.driverId,
+      },
+    });
+  }
+
+  async getFuelLogs(organizationId: string, vehicleId?: string) {
+    const where: Prisma.FuelLogWhereInput = { organizationId };
+    if (vehicleId) where.vehicleId = vehicleId;
+    return this.prisma.fuelLog.findMany({
+      where,
+      include: { vehicle: true },
+      orderBy: { date: 'desc' },
+    });
+  }
+
+  async getFuelSummary(organizationId: string, vehicleId?: string) {
+    const where: Prisma.FuelLogWhereInput = { organizationId };
+    if (vehicleId) where.vehicleId = vehicleId;
+    const logs = await this.prisma.fuelLog.findMany({ where, include: { vehicle: true } });
+
+    const byVehicle = new Map<string, { vehicleNumber: string; totalQuantity: number; totalCost: number; entries: number }>();
+    for (const log of logs) {
+      const key = log.vehicleId;
+      const existing = byVehicle.get(key) ?? { vehicleNumber: log.vehicle.vehicleNumber, totalQuantity: 0, totalCost: 0, entries: 0 };
+      existing.totalQuantity += Number(log.quantity);
+      existing.totalCost += Number(log.totalCost);
+      existing.entries += 1;
+      byVehicle.set(key, existing);
+    }
+
+    return {
+      totalFuelCost: logs.reduce((s, l) => s + Number(l.totalCost), 0),
+      totalQuantity: logs.reduce((s, l) => s + Number(l.quantity), 0),
+      byVehicle: Array.from(byVehicle.entries()).map(([id, data]) => ({ vehicleId: id, ...data })),
+    };
+  }
+
+  // ============================================================================
+  // ROUTES
+  // ============================================================================
+
+  async createRoute(
+    organizationId: string,
+    data: { routeCode: string; name: string; origin: string; destination: string; distance?: string; estimatedTime?: number; tollCharges?: string },
+  ) {
+    return this.prisma.route.create({
+      data: {
+        organizationId,
+        routeCode: data.routeCode,
+        name: data.name,
+        origin: data.origin,
+        destination: data.destination,
+        distance: data.distance ? new Prisma.Decimal(data.distance) : undefined,
+        estimatedTime: data.estimatedTime,
+        tollCharges: data.tollCharges ? new Prisma.Decimal(data.tollCharges) : undefined,
+      },
+    });
+  }
+
+  async getRoutes(organizationId: string) {
+    return this.prisma.route.findMany({
+      where: { organizationId, isActive: true },
+      orderBy: { name: 'asc' },
+    });
+  }
 }

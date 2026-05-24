@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Body,
   Param,
@@ -369,5 +370,119 @@ export class HrController {
       result.page,
       result.limit,
     );
+  }
+
+  // ============================================================================
+  // EMPLOYEE DOCUMENTS
+  // ============================================================================
+
+  @Post('employees/:id/documents')
+  @ApiOperation({ summary: 'Add employee document' })
+  async addDocument(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { documentType: string; title: string; fileUrl?: string; fileName?: string; expiryDate?: string; notes?: string },
+  ) {
+    const result = await this.hrService.addEmployeeDocument(user.organizationId, id, dto);
+    return createResponse(result);
+  }
+
+  @Get('employees/:id/documents')
+  @ApiOperation({ summary: 'Get employee documents' })
+  async getDocuments(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const result = await this.hrService.getEmployeeDocuments(user.organizationId, id);
+    return createResponse(result);
+  }
+
+  @Put('documents/:id/verify')
+  @ApiOperation({ summary: 'Verify employee document' })
+  async verifyDocument(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const result = await this.hrService.verifyDocument(user.organizationId, id, user.sub);
+    return createResponse(result);
+  }
+
+  @Get('documents/expiring')
+  @ApiOperation({ summary: 'Get expiring documents' })
+  async getExpiringDocs(@CurrentUser() user: JwtPayload, @Query('days') days?: string) {
+    const result = await this.hrService.getExpiringDocuments(user.organizationId, parseInt(days ?? '30', 10));
+    return createResponse(result);
+  }
+
+  // ============================================================================
+  // EMPLOYEE LOANS
+  // ============================================================================
+
+  @Post('loans')
+  @ApiOperation({ summary: 'Create employee loan' })
+  async createLoan(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { employeeId: string; loanType: string; principalAmount: string; interestRate?: string; monthlyDeduction: string; disbursementDate: string; notes?: string },
+  ) {
+    const result = await this.hrService.createLoan(user.organizationId, { ...dto, approvedBy: user.sub });
+    return createResponse(result);
+  }
+
+  @Get('loans')
+  @ApiOperation({ summary: 'List employee loans' })
+  async getLoans(@CurrentUser() user: JwtPayload, @Query('employeeId') employeeId?: string) {
+    const result = await this.hrService.getLoans(user.organizationId, employeeId);
+    return createResponse(result);
+  }
+
+  @Post('loans/:id/repayment')
+  @ApiOperation({ summary: 'Record loan repayment' })
+  async recordRepayment(@Param('id') id: string, @Body() dto: { amount: string; paymentDate: string }) {
+    const result = await this.hrService.recordLoanRepayment(id, dto.amount, dto.paymentDate);
+    return createResponse(result);
+  }
+
+  // ============================================================================
+  // PERFORMANCE REVIEWS
+  // ============================================================================
+
+  @Post('performance-reviews')
+  @ApiOperation({ summary: 'Create performance review' })
+  async createReview(@CurrentUser() user: JwtPayload, @Body() dto: Record<string, unknown>) {
+    const result = await this.hrService.createPerformanceReview(
+      user.organizationId,
+      dto as Parameters<typeof this.hrService.createPerformanceReview>[1],
+    );
+    return createResponse(result);
+  }
+
+  @Get('performance-reviews')
+  @ApiOperation({ summary: 'List performance reviews' })
+  async getReviews(@CurrentUser() user: JwtPayload, @Query('employeeId') employeeId?: string) {
+    const result = await this.hrService.getPerformanceReviews(user.organizationId, employeeId);
+    return createResponse(result);
+  }
+
+  @Put('performance-reviews/:id/complete')
+  @ApiOperation({ summary: 'Complete review with rating' })
+  async completeReview(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body('overallRating') overallRating: string,
+  ) {
+    const result = await this.hrService.completeReview(user.organizationId, id, overallRating);
+    return createResponse(result);
+  }
+
+  // ============================================================================
+  // FINAL SETTLEMENT
+  // ============================================================================
+
+  @Post('final-settlements')
+  @ApiOperation({ summary: 'Create final settlement' })
+  async createSettlement(@CurrentUser() user: JwtPayload, @Body() dto: { employeeId: string; lastWorkingDay: string; notes?: string }) {
+    const result = await this.hrService.createFinalSettlement(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('final-settlements')
+  @ApiOperation({ summary: 'List final settlements' })
+  async getSettlements(@CurrentUser() user: JwtPayload) {
+    const result = await this.hrService.getFinalSettlements(user.organizationId);
+    return createResponse(result);
   }
 }

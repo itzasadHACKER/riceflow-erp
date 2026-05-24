@@ -196,4 +196,45 @@ export class TransportController {
     );
     return createResponse(summary);
   }
+
+  @Post('fuel-logs')
+  @ApiOperation({ summary: 'Create fuel log' })
+  async createFuelLog(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { vehicleId: string; date: string; fuelType: string; quantity: string; unitPrice: string; odometerReading?: string; station?: string; receiptNumber?: string; driverId?: string },
+  ) {
+    const result = await this.transportService.createFuelLog(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('fuel-logs')
+  @ApiOperation({ summary: 'List fuel logs' })
+  async getFuelLogs(@CurrentUser() user: JwtPayload, @Query('vehicleId') vehicleId?: string) {
+    const result = await this.transportService.getFuelLogs(user.organizationId, vehicleId);
+    return createResponse(result);
+  }
+
+  @Get('fuel-summary')
+  @ApiOperation({ summary: 'Get fuel consumption summary' })
+  async getFuelSummary(@CurrentUser() user: JwtPayload, @Query('vehicleId') vehicleId?: string) {
+    const result = await this.transportService.getFuelSummary(user.organizationId, vehicleId);
+    return createResponse(result);
+  }
+
+  @Post('routes')
+  @ApiOperation({ summary: 'Create route' })
+  async createRoute(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { routeCode: string; name: string; origin: string; destination: string; distance?: string; estimatedTime?: number; tollCharges?: string },
+  ) {
+    const result = await this.transportService.createRoute(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('routes')
+  @ApiOperation({ summary: 'List routes' })
+  async getRoutes(@CurrentUser() user: JwtPayload) {
+    const result = await this.transportService.getRoutes(user.organizationId);
+    return createResponse(result);
+  }
 }

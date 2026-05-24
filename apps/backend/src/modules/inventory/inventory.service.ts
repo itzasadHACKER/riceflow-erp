@@ -417,4 +417,166 @@ export class InventoryService {
       byVariety: Object.values(byVariety),
     };
   }
+
+  // ============================================================================
+  // WAREHOUSE ZONES & BINS
+  // ============================================================================
+
+  async createZone(organizationId: string, data: { warehouseId: string; name: string; code: string; zoneType?: string; description?: string }) {
+    return this.prisma.warehouseZone.create({
+      data: { organizationId, warehouseId: data.warehouseId, name: data.name, code: data.code, zoneType: data.zoneType, description: data.description },
+    });
+  }
+
+  async getZones(organizationId: string, warehouseId: string) {
+    return this.prisma.warehouseZone.findMany({
+      where: { organizationId, warehouseId },
+      include: { bins: true },
+    });
+  }
+
+  async createBin(organizationId: string, data: { zoneId: string; binCode: string; rack?: string; shelf?: string; capacity?: string; capacityUnit?: string }) {
+    return this.prisma.warehouseBin.create({
+      data: {
+        organizationId,
+        zoneId: data.zoneId,
+        binCode: data.binCode,
+        rack: data.rack,
+        shelf: data.shelf,
+        capacity: data.capacity ? new Prisma.Decimal(data.capacity) : undefined,
+        capacityUnit: data.capacityUnit,
+      },
+    });
+  }
+
+  // ============================================================================
+  // CYCLE COUNTING
+  // ============================================================================
+
+  async createCycleCount(organizationId: string, data: { warehouseId: string; countDate: string; notes?: string }, countedBy?: string) {
+    const series = await this.prisma.numberingSeries.findFirst({
+      where: { organizationId, entityType: 'CYCLE_COUNT' },
+    });
+    const currentNumber = series ? series.currentNumber + 1 : 1;
+    const countNumber = `CC-${String(currentNumber).padStart(6, '0')}`;
+    if (series) {
+      await this.prisma.numberingSeries.update({ where: { id: series.id }, data: { currentNumber } });
+    }
+
+    const items = await this.prisma.inventoryItem.findMany({
+      where: { organizationId, warehouseId: data.warehouseId },
+    });
+
+    return this.prisma.$transaction(async (tx) => {
+      const cycleCount = await tx.cycleCount.create({
+        data: {
+          organizationId,
+          warehouseId: data.warehouseId,
+          countNumber,
+          countDate: new Date(data.countDate),
+          countedBy,
+          notes: data.notes,
+        },
+      });
+
+      for (const item of items) {
+        await tx.cycleCountItem.create({
+          data: {
+            cycleCountId: cycleCount.id,
+            inventoryItemId: item.id,
+            riceVarietyId: item.riceVarietyId,
+            systemQuantity: item.quantity,
+          },
+        });
+      }
+
+      return tx.cycleCount.findFirst({
+        where: { id: cycleCount.id },
+        include: { items: true },
+      });
+    });
+  }
+
+  async getCycleCounts(organizationId: string, warehouseId?: string) {
+    const where: Prisma.CycleCountWhereInput = { organizationId };
+    if (warehouseId) where.warehouseId = warehouseId;
+    return this.prisma.cycleCount.findMany({
+      where,
+      include: { items: true },
+      orderBy: { countDate: 'desc' },
+    });
+  }
+
+  async updateCountedQuantity(cycleCountItemId: string, countedQuantity: string) {
+    const counted = new Prisma.Decimal(countedQuantity);
+    const item = await this.prisma.cycleCountItem.findFirst({ where: { id: cycleCountItemId } });
+    if (!item) throw new NotFoundException('Cycle count item not found');
+    const variance = counted.sub(item.systemQuantity);
+    return this.prisma.cycleCountItem.update({
+      where: { id: cycleCountItemId },
+      data: { countedQuantity: counted, variance },
+    });
+  }
+
+  async completeCycleCount(organizationId: string, cycleCountId: string, approvedBy?: string) {
+    return this.prisma.cycleCount.update({
+      where: { id: cycleCountId },
+      data: { status: 'COMPLETED_COUNT', approvedBy },
+      include: { items: true },
+    });
+  }
+
+  // ============================================================================
+  // STOCK RESERVATIONS
+  // ============================================================================
+
+  async createReservation(
+    organizationId: string,
+    data: { inventoryItemId: string; quantity: string; referenceType: string; referenceId: string; expiryDate?: string },
+    reservedBy?: string,
+  ) {
+    return this.prisma.stockReservation.create({
+      data: {
+        organizationId,
+        inventoryItemId: data.inventoryItemId,
+        quantity: new Prisma.Decimal(data.quantity),
+        referenceType: data.referenceType,
+        referenceId: data.referenceId,
+        reservedBy,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate) : undefined,
+      },
+    });
+  }
+
+  async getReservations(organizationId: string, inventoryItemId?: string) {
+    const where: Prisma.StockReservationWhereInput = { organizationId, isReleased: false };
+    if (inventoryItemId) where.inventoryItemId = inventoryItemId;
+    return this.prisma.stockReservation.findMany({ where, orderBy: { createdAt: 'desc' } });
+  }
+
+  async releaseReservation(organizationId: string, reservationId: string) {
+    return this.prisma.stockReservation.update({
+      where: { id: reservationId },
+      data: { isReleased: true },
+    });
+  }
+
+  async getAvailableStock(organizationId: string, inventoryItemId: string) {
+    const item = await this.prisma.inventoryItem.findFirst({ where: { id: inventoryItemId, organizationId } });
+    if (!item) throw new NotFoundException('Inventory item not found');
+
+    const reservations = await this.prisma.stockReservation.aggregate({
+      where: { organizationId, inventoryItemId, isReleased: false },
+      _sum: { quantity: true },
+    });
+
+    const reserved = Number(reservations._sum.quantity ?? 0);
+    const available = Number(item.quantity) - reserved;
+
+    return {
+      totalQuantity: Number(item.quantity),
+      reserved,
+      available: available > 0 ? available : 0,
+    };
+  }
 }

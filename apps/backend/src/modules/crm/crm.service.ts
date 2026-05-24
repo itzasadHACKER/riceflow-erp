@@ -256,4 +256,60 @@ export class CrmService {
       orderBy: { dueDate: 'asc' },
     });
   }
+
+  // ============================================================================
+  // MEETINGS
+  // ============================================================================
+
+  async createMeeting(
+    organizationId: string,
+    data: {
+      title: string;
+      scheduledAt: string;
+      duration?: number;
+      location?: string;
+      meetingType: string;
+      entityType?: string;
+      entityId?: string;
+      agenda?: string;
+      attendees?: string[];
+    },
+    createdBy?: string,
+  ) {
+    return this.prisma.meeting.create({
+      data: {
+        organizationId,
+        title: data.title,
+        scheduledAt: new Date(data.scheduledAt),
+        duration: data.duration,
+        location: data.location,
+        meetingType: data.meetingType,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        agenda: data.agenda,
+        attendees: (data.attendees ?? []) as Prisma.InputJsonValue,
+        organizedBy: createdBy,
+      },
+    });
+  }
+
+  async getMeetings(organizationId: string, startDate?: string, endDate?: string) {
+    const where: Prisma.MeetingWhereInput = { organizationId };
+    if (startDate || endDate) {
+      where.scheduledAt = {};
+      if (startDate) where.scheduledAt.gte = new Date(startDate);
+      if (endDate) where.scheduledAt.lte = new Date(endDate);
+    }
+    return this.prisma.meeting.findMany({
+      where,
+      orderBy: { scheduledAt: 'desc' },
+    });
+  }
+
+  async completeMeeting(organizationId: string, meetingId: string, minutes: string) {
+    return this.prisma.meeting.update({
+      where: { id: meetingId },
+      data: { status: 'COMPLETED', minutes },
+    });
+  }
 }

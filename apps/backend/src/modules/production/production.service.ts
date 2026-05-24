@@ -342,4 +342,63 @@ export class ProductionService {
     const count = await tx.productionBatch.count({ where: { organizationId } });
     return `PB-${String(count + 1).padStart(6, '0')}`;
   }
+
+  // ============================================================================
+  // PRODUCTION PLANS
+  // ============================================================================
+
+  async createProductionPlan(
+    organizationId: string,
+    data: {
+      planDate: string;
+      shift?: string;
+      machineId?: string;
+      riceVarietyId?: string;
+      targetQuantity: string;
+      unit?: string;
+      notes?: string;
+    },
+    createdBy?: string,
+  ) {
+    const series = await this.prisma.numberingSeries.findFirst({
+      where: { organizationId, entityType: 'PRODUCTION_PLAN' },
+    });
+    const currentNumber = series ? series.currentNumber + 1 : 1;
+    const planNumber = `PP-${String(currentNumber).padStart(6, '0')}`;
+    if (series) {
+      await this.prisma.numberingSeries.update({ where: { id: series.id }, data: { currentNumber } });
+    }
+
+    return this.prisma.productionPlan.create({
+      data: {
+        organizationId,
+        planNumber,
+        planDate: new Date(data.planDate),
+        shift: data.shift,
+        machineId: data.machineId,
+        riceVarietyId: data.riceVarietyId,
+        targetQuantity: new Prisma.Decimal(data.targetQuantity),
+        unit: data.unit ?? 'KG',
+        notes: data.notes,
+        createdBy,
+      },
+    });
+  }
+
+  async getProductionPlans(organizationId: string, startDate?: string, endDate?: string) {
+    const where: Prisma.ProductionPlanWhereInput = { organizationId };
+    if (startDate || endDate) {
+      where.planDate = {};
+      if (startDate) where.planDate.gte = new Date(startDate);
+      if (endDate) where.planDate.lte = new Date(endDate);
+    }
+    return this.prisma.productionPlan.findMany({ where, orderBy: { planDate: 'desc' } });
+  }
+
+  async updatePlanActual(organizationId: string, planId: string, actualQuantity: string, status: string) {
+    return this.prisma.productionPlan.update({
+      where: { id: planId },
+      data: { actualQuantity: new Prisma.Decimal(actualQuantity), status },
+    });
+  }
 }

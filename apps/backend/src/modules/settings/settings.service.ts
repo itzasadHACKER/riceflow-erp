@@ -294,4 +294,75 @@ export class SettingsService {
       orderBy: { createdAt: 'desc' },
     });
   }
+
+  // ============================================================================
+  // CUSTOM FIELDS
+  // ============================================================================
+
+  async createCustomField(
+    organizationId: string,
+    data: {
+      entityType: string;
+      fieldName: string;
+      fieldLabel: string;
+      fieldType: string;
+      isRequired?: boolean;
+      defaultValue?: string;
+      options?: string[];
+      sortOrder?: number;
+    },
+  ) {
+    return this.prisma.customField.create({
+      data: {
+        organizationId,
+        entityType: data.entityType,
+        fieldName: data.fieldName,
+        fieldLabel: data.fieldLabel,
+        fieldType: data.fieldType,
+        isRequired: data.isRequired ?? false,
+        defaultValue: data.defaultValue,
+        options: data.options ?? [],
+        sortOrder: data.sortOrder ?? 0,
+      },
+    });
+  }
+
+  async getCustomFields(organizationId: string, entityType?: string) {
+    const where: Prisma.CustomFieldWhereInput = { organizationId, isActive: true };
+    if (entityType) where.entityType = entityType;
+    return this.prisma.customField.findMany({
+      where,
+      orderBy: [{ entityType: 'asc' }, { sortOrder: 'asc' }],
+    });
+  }
+
+  async setCustomFieldValue(
+    organizationId: string,
+    data: { customFieldId: string; entityType: string; entityId: string; value: string },
+  ) {
+    const existing = await this.prisma.customFieldValue.findFirst({
+      where: { organizationId, customFieldId: data.customFieldId, entityId: data.entityId },
+    });
+    if (existing) {
+      return this.prisma.customFieldValue.update({
+        where: { id: existing.id },
+        data: { value: data.value },
+      });
+    }
+    return this.prisma.customFieldValue.create({
+      data: {
+        organizationId,
+        customFieldId: data.customFieldId,
+        entityType: data.entityType,
+        entityId: data.entityId,
+        value: data.value,
+      },
+    });
+  }
+
+  async getCustomFieldValues(organizationId: string, entityId: string) {
+    return this.prisma.customFieldValue.findMany({
+      where: { organizationId, entityId },
+    });
+  }
 }

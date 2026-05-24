@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Param,
   Query,
@@ -161,5 +162,37 @@ export class ProductionController {
       toDate,
     );
     return createResponse(summary);
+  }
+
+  @Post('plans')
+  @ApiOperation({ summary: 'Create production plan' })
+  async createPlan(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { planDate: string; targetQuantity: string; shift?: string; machineId?: string; riceVarietyId?: string; unit?: string; notes?: string },
+  ) {
+    const result = await this.productionService.createProductionPlan(user.organizationId, dto, user.sub);
+    return createResponse(result);
+  }
+
+  @Get('plans')
+  @ApiOperation({ summary: 'List production plans' })
+  async getPlans(
+    @CurrentUser() user: JwtPayload,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    const result = await this.productionService.getProductionPlans(user.organizationId, startDate, endDate);
+    return createResponse(result);
+  }
+
+  @Put('plans/:id')
+  @ApiOperation({ summary: 'Update plan actual quantity' })
+  async updatePlanActual(
+    @CurrentUser() user: JwtPayload,
+    @Param('id') id: string,
+    @Body() dto: { actualQuantity: string; status: string },
+  ) {
+    const result = await this.productionService.updatePlanActual(user.organizationId, id, dto.actualQuantity, dto.status);
+    return createResponse(result);
   }
 }

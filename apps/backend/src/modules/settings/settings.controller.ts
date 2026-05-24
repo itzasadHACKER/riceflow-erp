@@ -204,4 +204,35 @@ export class SettingsController {
     );
     return createResponse(data);
   }
+
+  @Post('custom-fields')
+  @ApiOperation({ summary: 'Create custom field' })
+  async createCustomField(@CurrentUser() user: JwtPayload, @Body() dto: Record<string, unknown>) {
+    const result = await this.settingsService.createCustomField(
+      user.organizationId,
+      dto as Parameters<typeof this.settingsService.createCustomField>[1],
+    );
+    return createResponse(result);
+  }
+
+  @Get('custom-fields')
+  @ApiOperation({ summary: 'List custom fields' })
+  async getCustomFields(@CurrentUser() user: JwtPayload, @Query('entityType') entityType?: string) {
+    const result = await this.settingsService.getCustomFields(user.organizationId, entityType);
+    return createResponse(result);
+  }
+
+  @Post('custom-field-values')
+  @ApiOperation({ summary: 'Set custom field value' })
+  async setCustomFieldValue(@CurrentUser() user: JwtPayload, @Body() dto: { customFieldId: string; entityType: string; entityId: string; value: string }) {
+    const result = await this.settingsService.setCustomFieldValue(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('custom-field-values')
+  @ApiOperation({ summary: 'Get custom field values for entity' })
+  async getCustomFieldValues(@CurrentUser() user: JwtPayload, @Query('entityId') entityId: string) {
+    const result = await this.settingsService.getCustomFieldValues(user.organizationId, entityId);
+    return createResponse(result);
+  }
 }

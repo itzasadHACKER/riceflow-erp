@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Patch,
   Body,
   Param,
@@ -210,5 +211,103 @@ export class InventoryController {
       user.organizationId,
     );
     return createResponse(summary);
+  }
+
+  // ============================================================================
+  // ZONES & BINS
+  // ============================================================================
+
+  @Post('zones')
+  @ApiOperation({ summary: 'Create warehouse zone' })
+  async createZone(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { warehouseId: string; name: string; code: string; zoneType?: string; description?: string },
+  ) {
+    const result = await this.inventoryService.createZone(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  @Get('zones')
+  @ApiOperation({ summary: 'Get warehouse zones' })
+  async getZones(@CurrentUser() user: JwtPayload, @Query('warehouseId') warehouseId: string) {
+    const result = await this.inventoryService.getZones(user.organizationId, warehouseId);
+    return createResponse(result);
+  }
+
+  @Post('bins')
+  @ApiOperation({ summary: 'Create warehouse bin' })
+  async createBin(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { zoneId: string; binCode: string; rack?: string; shelf?: string; capacity?: string; capacityUnit?: string },
+  ) {
+    const result = await this.inventoryService.createBin(user.organizationId, dto);
+    return createResponse(result);
+  }
+
+  // ============================================================================
+  // CYCLE COUNTING
+  // ============================================================================
+
+  @Post('cycle-counts')
+  @ApiOperation({ summary: 'Create cycle count' })
+  async createCycleCount(@CurrentUser() user: JwtPayload, @Body() dto: { warehouseId: string; countDate: string; notes?: string }) {
+    const result = await this.inventoryService.createCycleCount(user.organizationId, dto, user.sub);
+    return createResponse(result);
+  }
+
+  @Get('cycle-counts')
+  @ApiOperation({ summary: 'List cycle counts' })
+  async getCycleCounts(@CurrentUser() user: JwtPayload, @Query('warehouseId') warehouseId?: string) {
+    const result = await this.inventoryService.getCycleCounts(user.organizationId, warehouseId);
+    return createResponse(result);
+  }
+
+  @Put('cycle-counts/:id/item')
+  @ApiOperation({ summary: 'Update counted quantity' })
+  async updateCountedQty(@Param('id') id: string, @Body('countedQuantity') countedQuantity: string) {
+    const result = await this.inventoryService.updateCountedQuantity(id, countedQuantity);
+    return createResponse(result);
+  }
+
+  @Put('cycle-counts/:id/complete')
+  @ApiOperation({ summary: 'Complete cycle count' })
+  async completeCycleCount(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const result = await this.inventoryService.completeCycleCount(user.organizationId, id, user.sub);
+    return createResponse(result);
+  }
+
+  // ============================================================================
+  // STOCK RESERVATIONS
+  // ============================================================================
+
+  @Post('reservations')
+  @ApiOperation({ summary: 'Create stock reservation' })
+  async createReservation(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: { inventoryItemId: string; quantity: string; referenceType: string; referenceId: string; expiryDate?: string },
+  ) {
+    const result = await this.inventoryService.createReservation(user.organizationId, dto, user.sub);
+    return createResponse(result);
+  }
+
+  @Get('reservations')
+  @ApiOperation({ summary: 'List reservations' })
+  async getReservations(@CurrentUser() user: JwtPayload, @Query('inventoryItemId') inventoryItemId?: string) {
+    const result = await this.inventoryService.getReservations(user.organizationId, inventoryItemId);
+    return createResponse(result);
+  }
+
+  @Put('reservations/:id/release')
+  @ApiOperation({ summary: 'Release reservation' })
+  async releaseReservation(@CurrentUser() user: JwtPayload, @Param('id') id: string) {
+    const result = await this.inventoryService.releaseReservation(user.organizationId, id);
+    return createResponse(result);
+  }
+
+  @Get('available-stock/:itemId')
+  @ApiOperation({ summary: 'Get available stock (total minus reserved)' })
+  async getAvailableStock(@CurrentUser() user: JwtPayload, @Param('itemId') itemId: string) {
+    const result = await this.inventoryService.getAvailableStock(user.organizationId, itemId);
+    return createResponse(result);
   }
 }
