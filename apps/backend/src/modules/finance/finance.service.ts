@@ -2571,12 +2571,29 @@ export class FinanceService {
     if (!receipt) throw new NotFoundException('Sales receipt not found');
     if (receipt.isPosted) throw new BadRequestException('Receipt already posted');
 
-    const cashAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1110' } });
     const salesAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '4100' } });
-    if (!cashAccount || !salesAccount) throw new BadRequestException('Required accounts not found');
+    if (!salesAccount) throw new BadRequestException('Sales Revenue account not found');
 
     const fiscalYear = await this.prisma.fiscalYear.findFirst({ where: { organizationId, isActive: true } });
     if (!fiscalYear) throw new BadRequestException('No active fiscal year');
+
+    const cashTypes = ['CASH', 'POS', 'RETAIL'];
+    const isCashSale = cashTypes.includes(receipt.invoiceType);
+
+    let debitAccountId: string;
+    let debitNarration: string;
+
+    if (isCashSale) {
+      const cashAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1110' } });
+      if (!cashAccount) throw new BadRequestException('Cash in Hand account not found');
+      debitAccountId = cashAccount.id;
+      debitNarration = `Cash received - ${receipt.receiptNumber}`;
+    } else {
+      const receivablesAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1300' } });
+      if (!receivablesAccount) throw new BadRequestException('Accounts Receivable account not found');
+      debitAccountId = receivablesAccount.id;
+      debitNarration = `Receivable from customer - ${receipt.receiptNumber}`;
+    }
 
     const je = await this.prisma.journalEntry.create({
       data: {
@@ -2585,12 +2602,12 @@ export class FinanceService {
         entryNumber: `JE-SR-${Date.now()}`,
         date: receipt.date,
         reference: receipt.receiptNumber,
-        narration: `Sales Receipt ${receipt.receiptNumber} - ${receipt.invoiceType}`,
+        narration: `Sales Receipt ${receipt.receiptNumber} - ${receipt.invoiceType}${isCashSale ? ' (Auto-debit Cash)' : ' (Debit Receivables)'}`,
         isPosted: true,
         postedAt: new Date(),
         lines: {
           create: [
-            { accountId: cashAccount.id, debit: receipt.totalAmount, credit: new Prisma.Decimal(0), narration: `Cash sales ${receipt.receiptNumber}` },
+            { accountId: debitAccountId, debit: receipt.totalAmount, credit: new Prisma.Decimal(0), narration: debitNarration },
             { accountId: salesAccount.id, debit: new Prisma.Decimal(0), credit: receipt.totalAmount, narration: `Sales revenue ${receipt.receiptNumber}` },
           ],
         },
@@ -2602,7 +2619,13 @@ export class FinanceService {
       data: { isPosted: true, journalEntryId: je.id },
     });
 
-    return { receipt: { ...receipt, isPosted: true }, journalEntryId: je.id };
+    return {
+      receipt: { ...receipt, isPosted: true },
+      journalEntryId: je.id,
+      accountingNote: isCashSale
+        ? 'Cash in Hand automatically debited (CASH/POS/RETAIL sale)'
+        : `Accounts Receivable debited (${receipt.invoiceType} sale — collect payment separately)`,
+    };
   }
 
   // ===================== CUSTOMER STATEMENT =====================

@@ -42,9 +42,16 @@ export class SetupWizardController {
   }
 
   @Get('guide')
-  @ApiOperation({ summary: 'Get quick start guide and tutorials' })
+  @ApiOperation({ summary: 'Get quick start guide' })
   async getGuide() {
     const result = this.setupWizardService.getQuickStartGuide();
+    return createResponse(result);
+  }
+
+  @Get('tutorials')
+  @ApiOperation({ summary: 'Get post-setup tutorials (module guides, email/WhatsApp integration, deployment)' })
+  async getTutorials() {
+    const result = this.setupWizardService.getTutorials();
     return createResponse(result);
   }
 }
