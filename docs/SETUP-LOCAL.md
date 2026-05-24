@@ -1,726 +1,403 @@
-# Grainix ERP — Complete Local Installation Guide
+# Grainix ERP — Local Installation Guide
 
 **Powered by Asad Ali | 0308-4420406**
 
-Install and run Grainix ERP on your own Windows/Mac/Linux computer. Your PC acts as the server — access the software through your browser at `http://localhost:3000`.
+Install and run Grainix ERP on your own PC. Works on Windows, Mac, and Linux.
 
 ---
 
 ## Table of Contents
 
-1. [What You Need (Prerequisites)](#what-you-need-prerequisites)
-2. [Step 1: Install Node.js](#step-1-install-nodejs)
-3. [Step 2: Install PostgreSQL](#step-2-install-postgresql)
-4. [Step 3: Install Git](#step-3-install-git)
-5. [Step 4: Download Grainix ERP](#step-4-download-grainix-erp)
-6. [Step 5: Create the Database](#step-5-create-the-database)
-7. [Step 6: Configure the Software](#step-6-configure-the-software)
-8. [Step 7: Install Dependencies](#step-7-install-dependencies)
-9. [Step 8: Set Up Database Tables](#step-8-set-up-database-tables)
-10. [Step 9: Start the Software](#step-9-start-the-software)
-11. [Step 10: Register and Start Using](#step-10-register-and-start-using)
-12. [How to Use Grainix ERP](#how-to-use-grainix-erp)
-13. [Daily Usage (Start/Stop)](#daily-usage-startstop)
-14. [Docker Alternative (Easier)](#docker-alternative-easier)
-15. [Access from Other PCs on Your Network](#access-from-other-pcs-on-your-network)
-16. [Backup Your Data](#backup-your-data)
-17. [Updating the Software](#updating-the-software)
-18. [Troubleshooting](#troubleshooting)
-19. [System Requirements](#system-requirements)
+1. [Prerequisites (Install These First)](#prerequisites-install-these-first)
+2. [Quick Setup (Automated — Recommended)](#quick-setup-automated--recommended)
+3. [Starting the Software Daily](#starting-the-software-daily)
+4. [Manual Setup (Step-by-Step)](#manual-setup-step-by-step)
+5. [How to Use Grainix ERP](#how-to-use-grainix-erp)
+6. [Docker Alternative](#docker-alternative)
+7. [Access from Other PCs](#access-from-other-pcs-on-your-network)
+8. [Backup & Updates](#backup-your-data)
+9. [Troubleshooting](#troubleshooting)
+10. [System Requirements](#system-requirements)
 
 ---
 
-## What You Need (Prerequisites)
+## Prerequisites (Install These First)
 
-You need to install **3 free programs** on your computer before setting up Grainix ERP:
+Install these **3 free programs** before running the setup:
 
-| Program | What It Does | Download Link |
-|---|---|---|
-| **Node.js 20 LTS** | Runs the backend and frontend code | https://nodejs.org |
-| **PostgreSQL 16** | Stores all your data (customers, invoices, etc.) | https://www.postgresql.org/download |
-| **Git** | Downloads the Grainix ERP source code | https://git-scm.com |
+| # | Program | Download | Notes |
+|---|---------|----------|-------|
+| 1 | **Node.js 20 LTS** | https://nodejs.org | Click the green "Download" button. **Use version 20 LTS — NOT version 24.** |
+| 2 | **PostgreSQL 16** | https://www.postgresql.org/download | During install: **remember the password** you set for the `postgres` user. Keep port `5432`. |
+| 3 | **Git** | https://git-scm.com | Click Next through all defaults. |
 
-**Time required:** About 30-45 minutes for first-time setup.
+### Important Notes for Windows Users
 
----
+After installing all three, **restart your computer** to ensure all PATH changes take effect.
 
-## Step 1: Install Node.js
+**PowerShell Execution Policy:** If you see "running scripts is disabled", open PowerShell **as Administrator** and run:
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+Type `Y` and press Enter. Then close and reopen PowerShell.
 
-### Windows
-
-1. Go to **https://nodejs.org**
-2. Click the big green **"Download Node.js (LTS)"** button
-3. Run the downloaded `.msi` file
-4. Click **Next** through all steps (keep all defaults)
-5. On the "Tools for Native Modules" page, check **"Automatically install the necessary tools"** if prompted
-6. Click **Install** → **Finish**
-
-**Verify it worked:** Open **Command Prompt** (press `Win+R`, type `cmd`, press Enter) and run:
+**Node.js Version Check:** Open a terminal and verify:
 ```
 node --version
-npm --version
 ```
-You should see something like `v20.x.x` and `10.x.x`. If you see `'node' is not recognized`, restart your computer and try again.
-
-### Mac
-
-Open **Terminal** (press `Cmd+Space`, type "Terminal", press Enter):
-```bash
-# Install Homebrew first (if you don't have it):
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Then install Node.js:
-brew install node@20
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs
-```
+You should see `v20.x.x`. If you see `v24.x.x`, uninstall it and install Node.js 20 LTS instead — version 24 has compatibility issues with some packages.
 
 ---
 
-## Step 2: Install PostgreSQL
+## Quick Setup (Automated — Recommended)
 
-### Windows
+### Step 1 — Download the code
 
-1. Go to **https://www.postgresql.org/download/windows/**
-2. Click **"Download the installer"** → this takes you to EDB's site
-3. Download the **PostgreSQL 16** installer for Windows x86-64
-4. Run the installer:
-   - **Installation Directory:** Keep default (`C:\Program Files\PostgreSQL\16`)
-   - **Select Components:** Keep all checked (PostgreSQL Server, pgAdmin 4, Stack Builder, Command Line Tools)
-   - **Data Directory:** Keep default
-   - **Password:** **Set a password for the `postgres` user** — for example: `postgres123`
-     - **WRITE THIS PASSWORD DOWN! You will need it later.**
-   - **Port:** Keep default `5432`
-   - **Locale:** Keep default
-   - Click **Next** → **Next** → **Finish**
-5. **Uncheck** "Launch Stack Builder" when asked → Click **Finish**
-
-**Verify it worked:**
-- Open **pgAdmin 4** from your Start menu — if it opens without error, PostgreSQL is installed correctly
-- Or open Command Prompt and run: `psql -U postgres --version`
-
-### Mac
+Open **PowerShell** (Windows) or **Terminal** (Mac/Linux):
 
 ```bash
-brew install postgresql@16
-brew services start postgresql@16
-```
-
-### Linux (Ubuntu/Debian)
-
-```bash
-# Add PostgreSQL repository
-sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-sudo apt update
-
-# Install PostgreSQL 16
-sudo apt install -y postgresql-16 postgresql-client-16
-
-# Start the service
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
-```
-
----
-
-## Step 3: Install Git
-
-### Windows
-
-1. Go to **https://git-scm.com/download/win**
-2. The download should start automatically
-3. Run the installer → keep clicking **Next** with all default options → **Install** → **Finish**
-
-**Verify:** Open Command Prompt and run:
-```
-git --version
-```
-You should see `git version 2.x.x`.
-
-### Mac
-
-```bash
-# Git comes with Xcode Command Line Tools:
-xcode-select --install
-# Or via Homebrew:
-brew install git
-```
-
-### Linux
-
-```bash
-sudo apt install -y git
-```
-
----
-
-## Step 4: Download Grainix ERP
-
-### Where to Run Commands
-
-- **Windows:** Open **Command Prompt** (press `Win+R` → type `cmd` → Enter) or **PowerShell** (press `Win+X` → select "Windows PowerShell")
-- **Mac:** Open **Terminal** (press `Cmd+Space` → type "Terminal" → Enter)
-- **Linux:** Open your terminal application
-
-### Download
-
-```bash
-# Go to your Desktop (or wherever you want to install)
 cd Desktop
-
-# Download the Grainix ERP code
 git clone https://github.com/itzasadHACKER/riceflow-erp.git
-
-# Enter the project folder
 cd riceflow-erp
 ```
 
-This creates a folder called `riceflow-erp` on your Desktop containing all the source code.
+### Step 2 — Run the setup script
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup.ps1
+```
+
+**Mac/Linux (Terminal):**
+```bash
+chmod +x scripts/setup.sh
+./scripts/setup.sh
+```
+
+The script will:
+- Check Node.js and PostgreSQL are installed
+- Ask for your PostgreSQL password
+- Create the `grainix_erp` database automatically
+- Generate the `.env` configuration file
+- Install all dependencies (3-5 minutes)
+- Create database tables
+
+### Step 3 — Start the software
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\start.ps1
+```
+
+**Windows (Double-click):**
+Open the `scripts` folder in File Explorer and double-click **`start.bat`**
+
+**Mac/Linux:**
+```bash
+./scripts/start.sh
+```
+
+### Step 4 — Open in browser
+
+Go to **http://localhost:3000** → Click **Sign up** → Register your account → Done!
 
 ---
 
-## Step 5: Create the Database
+## Starting the Software Daily
 
-You need to create an empty database that Grainix ERP will use to store all your data.
+Every time you want to use Grainix ERP:
 
-### Windows — Using pgAdmin (Graphical — Easier)
+**Windows — Double-click method:**
+1. Open the `riceflow-erp\scripts` folder
+2. Double-click **`start.bat`**
+3. Two command windows will open (backend + frontend)
+4. Browser opens automatically to http://localhost:3000
 
-1. Open **pgAdmin 4** from your Start menu
-2. When asked for a master password, set one (e.g., `pgadmin123`) — this is different from the postgres password
-3. In the left sidebar, expand **Servers** → **PostgreSQL 16**
-4. Enter your `postgres` password when prompted (the one you set during PostgreSQL installation)
-5. Right-click **Databases** → **Create** → **Database...**
-6. In the **Database** field, type: `grainix_erp`
-7. Click **Save**
+**Windows — PowerShell method:**
+```powershell
+cd Desktop\riceflow-erp
+.\scripts\start.ps1
+```
 
-### Windows — Using Command Line
-
-Open Command Prompt:
+**Mac/Linux:**
 ```bash
-# Connect to PostgreSQL (enter your postgres password when prompted)
-psql -U postgres
+cd ~/Desktop/riceflow-erp
+./scripts/start.sh
+```
 
-# Create the database
+**Stopping:** Press `Ctrl+C` in both server windows, or simply close them.
+
+**Is my data safe?** Yes! Data is stored in PostgreSQL which runs independently. Stopping the servers does NOT delete any data.
+
+---
+
+## Manual Setup (Step-by-Step)
+
+Use this if the automated setup script doesn't work for you.
+
+### 1. Download the code
+
+```bash
+cd Desktop
+git clone https://github.com/itzasadHACKER/riceflow-erp.git
+cd riceflow-erp
+```
+
+### 2. Create the database
+
+**Option A — Using pgAdmin (graphical, easier for Windows):**
+1. Open **pgAdmin 4** from your Start menu
+2. Set a master password when asked (e.g., `pgadmin123`)
+3. Expand **Servers** → **PostgreSQL 16** → enter your postgres password
+4. Right-click **Databases** → **Create** → **Database...**
+5. Name: `grainix_erp` (use **underscore**, not hyphen)
+6. Click **Save**
+
+**Option B — Using command line:**
+
+Windows PowerShell:
+```powershell
+& 'C:\Program Files\PostgreSQL\16\bin\psql.exe' -U postgres
+```
+
+Mac:
+```bash
+psql postgres
+```
+
+Linux:
+```bash
+sudo -u postgres psql
+```
+
+Then type:
+```sql
 CREATE DATABASE grainix_erp;
-
-# Create a dedicated user (optional but recommended)
-CREATE USER grainix WITH PASSWORD 'grainix_secret';
-GRANT ALL PRIVILEGES ON DATABASE grainix_erp TO grainix;
-ALTER DATABASE grainix_erp OWNER TO grainix;
-
-# Exit
 \q
 ```
 
-**If `psql` is not recognized on Windows:**
-- Add PostgreSQL to your PATH: Go to **System Properties** → **Environment Variables** → Edit **Path** → Add `C:\Program Files\PostgreSQL\16\bin`
-- Or use the full path: `"C:\Program Files\PostgreSQL\16\bin\psql.exe" -U postgres`
-
-### Mac
+### 3. Configure the backend
 
 ```bash
-# If using Homebrew PostgreSQL:
-createdb grainix_erp
-
-# Or using psql:
-psql postgres -c "CREATE DATABASE grainix_erp;"
-```
-
-### Linux
-
-```bash
-sudo -u postgres psql -c "CREATE DATABASE grainix_erp;"
-sudo -u postgres psql -c "CREATE USER grainix WITH PASSWORD 'grainix_secret';"
-sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE grainix_erp TO grainix;"
-sudo -u postgres psql -c "ALTER DATABASE grainix_erp OWNER TO grainix;"
-```
-
----
-
-## Step 6: Configure the Software
-
-### 6.1 — Configure the Backend
-
-Navigate to the backend folder and create the configuration file:
-
-```bash
-# From the riceflow-erp folder:
 cd apps/backend
+```
 
-# Copy the example config file:
-# Windows (Command Prompt):
+Windows:
+```powershell
 copy .env.example .env
+notepad .env
+```
 
-# Mac/Linux:
+Mac/Linux:
+```bash
 cp .env.example .env
+nano .env
 ```
 
-Now open the `.env` file in a text editor:
-- **Windows:** Open with Notepad: `notepad .env`
-- **Mac/Linux:** Open with nano: `nano .env`
-- **Or** use VS Code: `code .env` (if you have VS Code installed)
-
-Update these values in the `.env` file:
-
-```env
-# === DATABASE ===
-# If you created a dedicated user in Step 5:
-DATABASE_URL="postgresql://grainix:grainix_secret@localhost:5432/grainix_erp"
-
-# OR if you're using the default postgres user:
-DATABASE_URL="postgresql://postgres:YOUR_POSTGRES_PASSWORD@localhost:5432/grainix_erp"
-
-# === AUTHENTICATION ===
-# Change this to any random long string (the longer the better)
-JWT_SECRET="my-super-secret-key-change-this-in-production-abc123xyz789"
-
-# === SERVER ===
-PORT=4000
-NODE_ENV=development
-
-# === CORS ===
-CORS_ORIGINS="http://localhost:3000"
+Find the `DATABASE_URL` line and replace `YOUR_PASSWORD` with your PostgreSQL password:
+```
+DATABASE_URL="postgresql://postgres:YOUR_ACTUAL_PASSWORD@localhost:5432/grainix_erp?schema=public"
 ```
 
-**IMPORTANT:** Replace `YOUR_POSTGRES_PASSWORD` with the actual password you set when installing PostgreSQL (e.g., `postgres123`).
+Save and close the file.
 
-Save the file:
-- **Notepad:** `Ctrl+S`
-- **nano:** `Ctrl+X` → `Y` → `Enter`
-- **VS Code:** `Ctrl+S`
-
-### 6.2 — Configure the Frontend (Optional)
-
-The frontend should work with defaults, but if the backend runs on a different port, create a config file:
+### 4. Install dependencies
 
 ```bash
-# From apps/frontend folder:
-cd ../frontend
-```
-
-Create a file called `.env.local`:
-- **Windows:** `notepad .env.local`
-- **Mac/Linux:** `nano .env.local`
-
-Add:
-```env
-NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-```
-
-Save and close.
-
-```bash
-# Go back to project root
 cd ../..
-```
 
----
-
-## Step 7: Install Dependencies
-
-This downloads all the code libraries that Grainix ERP needs. Run these commands from the `riceflow-erp` folder:
-
-```bash
-# Install root dependencies
+# Root
 npm install
 
-# Install backend dependencies
+# Backend
 cd apps/backend
 npm install
 
-# Install frontend dependencies
+# Frontend
 cd ../frontend
 npm install
 
-# Go back to project root
 cd ../..
 ```
 
-**This takes 3-8 minutes** depending on your internet speed. You'll see a progress bar and lots of text — that's normal.
+This takes 3-5 minutes. If you get network errors, try running `npm install` again.
 
-**If you see errors:**
-- Try running the failed command again
-- Make sure you have Node.js 20+ installed (`node --version`)
-- On Windows, if you see `EPERM` errors, try running Command Prompt as Administrator
-
----
-
-## Step 8: Set Up Database Tables
-
-This creates all the tables in your database (customers, invoices, accounts, etc.):
+### 5. Set up database tables
 
 ```bash
 cd apps/backend
-
-# Generate the database client
 npx prisma generate
-
-# Create all tables in your database
 npx prisma db push
-
-# Go back to project root
 cd ../..
 ```
 
 You should see: `Your database is now in sync with your Prisma schema.`
 
-**If you get a connection error:** Double-check your `DATABASE_URL` in the `.env` file. Make sure:
-- PostgreSQL is running (check Windows Services or run `sudo systemctl status postgresql` on Linux)
-- The password is correct
-- The database `grainix_erp` exists
+### 6. Start the software
 
----
+You need **two terminal windows** running at the same time:
 
-## Step 9: Start the Software
-
-You need **TWO terminal windows** — one for the backend API server and one for the frontend web server.
-
-### Terminal 1 — Start the Backend
-
+**Terminal 1 — Backend:**
 ```bash
 cd apps/backend
-npm run start:dev
+npx nest start --watch
 ```
+Wait for: `Grainix ERP API running on http://localhost:4000`
 
-**Wait until you see:** `Nest application successfully started` and `Listening on port 4000`
-
-**Keep this terminal window open!** The backend must stay running.
-
-### Terminal 2 — Start the Frontend
-
-Open a **new/second terminal window** (don't close the first one!):
-- **Windows:** Press `Win+R` → type `cmd` → Enter (for a new Command Prompt)
-- **Mac:** Press `Cmd+T` in Terminal (new tab) or `Cmd+N` (new window)
-
+**Terminal 2 — Frontend (open a new window):**
 ```bash
-# Navigate to the frontend folder (adjust path based on where you cloned)
-cd Desktop/riceflow-erp/apps/frontend
-npm run dev
+cd apps/frontend
+npx next dev
 ```
+Wait for: `Ready on http://localhost:3000`
 
-**Wait until you see:** `Ready on http://localhost:3000`
+### 7. Open browser
 
-**Keep this terminal window open too!**
-
----
-
-## Step 10: Register and Start Using
-
-1. Open your web browser (**Google Chrome** recommended)
-2. Go to: **http://localhost:3000**
-3. You'll see the Grainix ERP login page with a purple gradient on the left
-4. Click **"Sign up"** to register a new account
-5. Fill in:
-   - **First Name** and **Last Name**
-   - **Email:** Use any email (e.g., `admin@mycompany.com`)
-   - **Password:** At least 8 characters
-   - **Organization Name:** Your rice mill name (e.g., "Ahmad Rice Mills")
-6. Click **Register**
-7. You'll be taken to the **Dashboard** with 41 colorful module cards
-
-**Congratulations! Grainix ERP is now running on your PC!**
+Go to **http://localhost:3000** → Register → Start using!
 
 ---
 
 ## How to Use Grainix ERP
 
-### Dashboard Overview
+### Dashboard
 
 After logging in, you'll see:
 - **6 KPI Cards** at the top (Revenue, Purchases, Sales, Inventory, Production, Employees)
-- **41 Module Cards** below — click any card to open that module
+- **Module Cards** below — click any card to open that module
+- **Ctrl+K** — Quick search to jump to any module
 
-### Key Modules for a Rice Mill
+### Key Modules for Rice Mills
 
-| Module | What It Does | How to Use |
-|---|---|---|
-| **Finance** | Chart of Accounts, Journal Entries, Trial Balance | Click "Finance" → View/create accounts → Post journal entries |
-| **Procurement** | Buy paddy from farmers | Click "Procurement" → "New Purchase Order" → Select supplier → Add items |
-| **Sales** | Sell rice to customers | Click "Sales" → "New Sales Order" → Select customer → Add products |
-| **Inventory** | Track stock in warehouses | Click "Inventory" → View stock levels → Transfer between warehouses |
-| **Production** | Track milling/shelling | Click "Production" → Create production batch → Record input/output |
-| **HR & Payroll** | Manage employees and salaries | Click "HR" → Add employees → Process payroll |
-| **Weighbridge** | Record truck weights | Click "Weighbridge" (under Logistics) → Record gross weight → Record tare weight |
-| **Bardana** | Track bags issued/received | Click "Bardana" → Issue bags → Record returns |
-| **Khata/Ledger** | Party-wise running balance | Click "Party Khata" (under Finance) → Search customer/supplier → View balance |
-| **Purchase Invoices** | Non-paddy purchases | Click "Purchase Invoices" → Create invoice with line items |
-| **Assets** | Track fixed assets | Click "Assets" → Add machinery/vehicles → Track depreciation |
-| **Reports** | Financial reports | Click "Reports" → Select report type → View/download PDF |
+| Module | What It Does |
+|--------|-------------|
+| **Finance** | Chart of Accounts, Journal Entries, Trial Balance, P&L, Balance Sheet |
+| **Procurement** | Buy paddy from farmers with purchase orders |
+| **Sales** | Sell rice with itemized invoices (variety, quantity, rate per row) |
+| **Inventory** | Track stock — auto-updates on sales and purchases |
+| **Production** | Track milling/shelling batches |
+| **Weighbridge** | Record truck weights — gross, tare, net with sequential slip numbers |
+| **Bardana** | Track bags issued/received/returned with outstanding balance |
+| **Khata/Ledger** | Party-wise running balance (DR/CR) for customers and suppliers |
+| **Purchase Invoices** | Non-paddy purchases with line items |
+| **HR & Payroll** | Employee management and salary processing |
+| **Reports** | Financial reports with PDF download |
 
 ### Common Workflows
 
-**1. Record a Paddy Purchase:**
-```
-Procurement → New Purchase Order → Select Farmer → Add Paddy Details
-(Variety, Quantity, Moisture %, Rate) → Save → Mark as Received
-```
+**Record a Paddy Purchase:**
+Procurement → New Purchase Order → Select Farmer → Add Paddy Details → Save → Mark as Received
 
-**2. Create a Sales Invoice:**
-```
-Sales → New Sales Order → Select Customer → Add Rice Products
-(Variety, Bags, Rate per Bag) → Save → Generate Invoice → Print PDF
-```
+**Create a Sales Invoice:**
+Sales → New Sales Order → Select Customer → Add Rice Products (variety, bags, rate) → Save → Print PDF
 
-**3. Check Customer Balance (Khata):**
-```
-Finance → Party Khata → Search Customer Name → View Running Balance
-(Shows all purchases, payments, credits with running DR/CR balance)
-```
+**Check Customer Balance:**
+Finance → Party Khata → Search Customer → View Running Balance
 
-**4. Record Weighbridge Entry:**
-```
-Weighbridge → New Slip → Enter Vehicle Number → Record Gross Weight
-→ After unloading → Record Tare Weight → Net Weight auto-calculated
-```
+**Record Weighbridge Entry:**
+Weighbridge → New Slip → Enter Vehicle Number → Record Gross Weight → After unloading → Record Tare Weight
 
-**5. View Financial Reports:**
-```
+**View Financial Reports:**
 Reports → Trial Balance / P&L / Balance Sheet → Select Date Range → View/Print
-```
-
-### Quick Search (Cmd+K / Ctrl+K)
-
-Press **Ctrl+K** (Windows/Linux) or **Cmd+K** (Mac) from anywhere to open the command palette. Type any module name to quickly jump to it.
-
-### Sidebar Navigation
-
-The left sidebar organizes all 41+ modules into categories:
-- **Organization** — Company settings, HR, Workflow
-- **Finance** — Accounting, Expenses, Bank, Budgeting
-- **Sales & CRM** — Sales Orders, Quotations, CRM, Marketing
-- **Purchasing** — Purchase Orders, Invoices, RFQ
-- **Inventory & Logistics** — Stock, Transport, Gate Pass, Weighbridge, Bardana
-- **Production** — Milling, BOM, MRP, Quality Control
-- **Intelligence** — Reports, Analytics, AI Assistant
-- **Administration** — Settings, Audit Trail, Data Import
-
-Click the arrow (>) next to any section to expand/collapse sub-modules.
 
 ---
 
-## Daily Usage (Start/Stop)
+## Docker Alternative
 
-### Starting the Software (Every Time You Want to Use It)
-
-Open **two terminal windows** and run:
-
-**Terminal 1:**
-```bash
-cd Desktop/riceflow-erp/apps/backend
-npm run start:dev
-```
-
-**Terminal 2:**
-```bash
-cd Desktop/riceflow-erp/apps/frontend
-npm run dev
-```
-
-Then open browser: **http://localhost:3000**
-
-### Stopping the Software
-
-Press **Ctrl+C** in both terminal windows. This safely stops the servers.
-
-### Is My Data Safe When I Stop?
-
-**Yes!** Your data is stored in PostgreSQL, which runs independently. Stopping the Grainix servers does NOT delete any data. When you start again, all your invoices, customers, and transactions will still be there.
-
----
-
-## Docker Alternative (Easier)
-
-If you find the manual setup too complex, Docker handles everything automatically.
-
-### Install Docker
-
-- **Windows/Mac:** Download **Docker Desktop** from https://www.docker.com/products/docker-desktop/ and install
-- **Linux:** `sudo apt install -y docker.io docker-compose`
-
-### Start Everything with One Command
+If you have Docker installed, you can skip the manual setup entirely:
 
 ```bash
 cd Desktop/riceflow-erp
 docker compose up
 ```
 
-This automatically:
-- Starts PostgreSQL (no need to install separately)
-- Starts the Backend API
-- Starts the Frontend
-- Creates all database tables
+This automatically starts PostgreSQL + Backend + Frontend. Access at http://localhost:3000.
 
-Access at: **http://localhost:3000**
+Stop with: `Ctrl+C` or `docker compose down`
 
-### Stop
-
-Press `Ctrl+C` or run:
-```bash
-docker compose down
-```
-
-### Restart
-
-```bash
-docker compose up
-```
+Install Docker Desktop from: https://www.docker.com/products/docker-desktop/
 
 ---
 
 ## Access from Other PCs on Your Network
 
-If you want other computers in your office (on the same WiFi/LAN) to access Grainix while your PC runs the server:
-
-### 1. Find Your PC's Local IP Address
-
-**Windows:** Open Command Prompt → type:
-```
-ipconfig
-```
-Look for **"IPv4 Address"** under your active network adapter (e.g., `192.168.1.100`)
-
-**Mac/Linux:**
-```bash
-ifconfig
-# or
-ip addr
-```
-Look for your IP (e.g., `192.168.1.100`)
-
-### 2. Update Configuration
-
-Update `CORS_ORIGINS` in `apps/backend/.env`:
-```env
-CORS_ORIGINS="http://localhost:3000,http://192.168.1.100:3000"
-```
-
-### 3. Start Frontend with Network Access
-
-```bash
-cd apps/frontend
-npx next dev -H 0.0.0.0
-```
-
-### 4. Access from Other PCs
-
-Other computers on the same network can now open: `http://192.168.1.100:3000`
-
-(Replace `192.168.1.100` with your actual IP from step 1)
+1. Find your PC's IP: Run `ipconfig` (Windows) or `ip addr` (Linux/Mac) — look for `192.168.x.x`
+2. Update `CORS_ORIGINS` in `apps/backend/.env`:
+   ```
+   CORS_ORIGINS="http://localhost:3000,http://192.168.1.100:3000"
+   ```
+3. Start frontend with: `npx next dev -H 0.0.0.0`
+4. Other PCs open: `http://192.168.1.100:3000`
 
 ---
 
 ## Backup Your Data
 
-### Manual Backup
-
 ```bash
-# From the riceflow-erp folder:
+# Manual backup
 bash scripts/backup.sh daily
-```
 
-This creates a backup file in the `backups/` folder.
-
-### Restore from Backup
-
-```bash
-# Replace the filename with your actual backup file:
+# Restore from backup
 psql -U postgres grainix_erp < backups/daily/grainix_erp_2025-05-23.sql
 ```
 
-### Automated Backup (Linux/Mac)
-
-Set up a daily automatic backup:
-```bash
-crontab -e
-```
-Add this line:
-```
-0 2 * * * cd /path/to/riceflow-erp && bash scripts/backup.sh daily
-```
-
----
-
 ## Updating the Software
-
-When new updates are available:
 
 ```bash
 cd Desktop/riceflow-erp
-
-# Download latest code
 git pull
-
-# Update dependencies
-cd apps/backend && npm install
+cd apps/backend && npm install && npx prisma generate && npx prisma db push
 cd ../frontend && npm install
 cd ../..
-
-# Update database tables (if schema changed)
-cd apps/backend
-npx prisma generate
-npx prisma db push
-
-# Restart the software (Ctrl+C in both terminals, then start again)
 ```
+
+Then restart the servers.
 
 ---
 
 ## Troubleshooting
 
 | Problem | Solution |
-|---|---|
-| `'node' is not recognized` | Restart your computer after installing Node.js. If still not working, reinstall Node.js |
-| `'git' is not recognized` | Restart your computer after installing Git |
-| `Cannot connect to database` | Make sure PostgreSQL is running. On Windows: open **Services** (Win+R → `services.msc`) → find **postgresql** → make sure it says **Running** |
-| `ECONNREFUSED 127.0.0.1:5432` | PostgreSQL is not running. Start it from Services (Windows) or `sudo systemctl start postgresql` (Linux) |
-| `password authentication failed` | Wrong password in `.env` file. Check the `DATABASE_URL` password matches what you set during PostgreSQL installation |
-| `database "grainix_erp" does not exist` | You forgot Step 5. Go back and create the database |
-| `Port 4000 already in use` | Something else is using port 4000. Either close that program or change `PORT=4001` in `.env` |
-| `Port 3000 already in use` | Close other dev servers. Or change the frontend port: `npx next dev -p 3001` |
-| `npm install fails with EPERM` | On Windows, run Command Prompt as **Administrator** (right-click → Run as administrator) |
-| `npm install fails with EACCES` | On Mac/Linux, don't use `sudo npm install`. Instead fix permissions: `sudo chown -R $(whoami) ~/.npm` |
-| `Prisma error: migration failed` | Delete `prisma/migrations` folder and run `npx prisma db push` again |
-| `Module not found` errors | Run `npm install` in the specific folder (backend or frontend) |
-| `next: command not found` | Run `npm install` in the `apps/frontend` folder |
-| `nest: command not found` | Run `npm install` in the `apps/backend` folder |
-| Browser shows blank page | Check both terminals for errors. Make sure backend AND frontend are both running |
-| `CORS error` in browser | Check `CORS_ORIGINS` in `apps/backend/.env` includes `http://localhost:3000` |
-| Slow performance | Make sure you have at least 4 GB RAM free. Close other heavy programs |
+|---------|----------|
+| `'node' is not recognized` | Restart PC after installing Node.js |
+| `node --version` shows v24 | Uninstall Node 24, install Node.js 20 LTS from https://nodejs.org |
+| `running scripts is disabled` | Run PowerShell as Admin: `Set-ExecutionPolicy RemoteSigned -Scope CurrentUser` |
+| `psql is not recognized` | Use pgAdmin instead, or use full path: `& 'C:\Program Files\PostgreSQL\16\bin\psql.exe' -U postgres` |
+| `password authentication failed` | Wrong password in `.env`. Edit `apps/backend/.env` and fix `DATABASE_URL` password |
+| `database "grainix_erp" does not exist` | Create it using pgAdmin or psql (see Step 2 in Manual Setup) |
+| `Cannot find module '@nestjs/platform-express'` | Run `npm install` in `apps/backend` folder |
+| `'nest' is not recognized` | Use `npx nest start --watch` instead of `nest start --watch` |
+| `Port 4000 already in use` | Change `PORT=4001` in `apps/backend/.env` |
+| `Port 3000 already in use` | Use `npx next dev -p 3001` |
+| `npm install ECONNRESET` | Network issue. Try again, or switch to mobile hotspot temporarily |
+| `CORS error in browser` | Check `CORS_ORIGINS` in `.env` includes `http://localhost:3000` |
+| Blank page in browser | Make sure BOTH backend and frontend are running |
+| `Cannot find module 'src/main'` | You may have Node 24. Install Node.js 20 LTS instead |
 
 ---
 
 ## System Requirements
 
 | Component | Minimum | Recommended |
-|---|---|---|
-| **CPU** | 2 cores | 4+ cores |
-| **RAM** | 4 GB | 8+ GB |
-| **Disk Space** | 2 GB free | 10+ GB free |
+|-----------|---------|-------------|
 | **OS** | Windows 10, macOS 12, Ubuntu 20.04 | Windows 11, macOS 14, Ubuntu 22.04 |
-| **Node.js** | v18 | v20 LTS |
+| **Node.js** | v18 | **v20 LTS** |
 | **PostgreSQL** | 14 | 16 |
+| **RAM** | 4 GB | 8+ GB |
+| **Disk** | 2 GB free | 10+ GB free |
 | **Browser** | Chrome 90+ | Latest Chrome/Edge |
 
 ---
 
-## Quick Reference Card
+## Quick Reference
 
 | Action | Command |
-|---|---|
-| **Start backend** | `cd apps/backend && npm run start:dev` |
-| **Start frontend** | `cd apps/frontend && npm run dev` |
-| **Open in browser** | `http://localhost:3000` |
-| **Stop servers** | `Ctrl+C` in both terminals |
-| **Update database** | `cd apps/backend && npx prisma db push` |
-| **Manual backup** | `bash scripts/backup.sh daily` |
-| **Update software** | `git pull && cd apps/backend && npm install && npx prisma db push` |
-| **Quick search** | `Ctrl+K` (Windows/Linux) or `Cmd+K` (Mac) |
+|--------|---------|
+| **Setup (first time)** | `.\scripts\setup.ps1` (Windows) / `./scripts/setup.sh` (Mac/Linux) |
+| **Start** | `.\scripts\start.ps1` or double-click `scripts\start.bat` |
+| **Stop** | Close server windows or `Ctrl+C` |
+| **Open in browser** | http://localhost:3000 |
+| **API docs** | http://localhost:4000/docs |
+| **Update** | `git pull` then re-run setup |
 
 ---
 
