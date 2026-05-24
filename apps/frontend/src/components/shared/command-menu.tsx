@@ -53,6 +53,15 @@ import {
   Calendar,
   Hash,
   Handshake,
+  ArrowDownCircle,
+  Repeat,
+  Link2,
+  Download,
+  Printer,
+  Route,
+  ArrowLeftRight,
+  FileCheck,
+  Scale,
 } from "lucide-react";
 
 interface CommandMenuProps {
@@ -106,6 +115,13 @@ const pages = [
   { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar },
   { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory },
   { title: "Admin Enhancements", href: "/dashboard/admin-enhancements", icon: Shield },
+  { title: "Credit Notes & Returns", href: "/dashboard/credit-notes", icon: ArrowDownCircle },
+  { title: "Deposits & Payments", href: "/dashboard/deposits-payments", icon: CreditCard },
+  { title: "Admin Tools (UDF/Print)", href: "/dashboard/admin-tools", icon: Printer },
+  { title: "Resource Capacity & Routing", href: "/dashboard/production-enhanced", icon: Route },
+  { title: "Transfers & Counting", href: "/dashboard/inventory-enhanced", icon: ArrowLeftRight },
+  { title: "Recurring JEs & Bank Import", href: "/dashboard/finance-enhanced", icon: Repeat },
+  { title: "3-Way Matching & Landed Costs", href: "/dashboard/purchase-enhanced", icon: FileCheck },
 ];
 
 const actions = [
@@ -129,6 +145,11 @@ const actions = [
   { title: "Run MRP", href: "/dashboard/mrp", icon: Plus },
   { title: "New Campaign", href: "/dashboard/marketing-campaigns", icon: Plus },
   { title: "New Production Order", href: "/dashboard/production-orders", icon: Plus },
+  { title: "New Credit Note", href: "/dashboard/credit-notes", icon: Plus },
+  { title: "New Debit Note", href: "/dashboard/credit-notes", icon: Plus },
+  { title: "Record Deposit", href: "/dashboard/deposits-payments", icon: Plus },
+  { title: "Record Payment", href: "/dashboard/deposits-payments", icon: Plus },
+  { title: "Add Custom Field", href: "/dashboard/admin-tools", icon: Plus },
 ];
 
 export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {

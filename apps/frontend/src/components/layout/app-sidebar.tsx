@@ -46,6 +46,15 @@ import {
   Calendar,
   Hash,
   Handshake,
+  ArrowDownCircle,
+  Repeat,
+  Link2,
+  Download,
+  Printer,
+  Route,
+  ArrowLeftRight,
+  Scale,
+  FileCheck,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -122,9 +131,11 @@ const moduleNav: NavSection[] = [
           { title: "Chart of Accounts", href: "/dashboard/finance", icon: Wallet },
           { title: "Expense & Vouchers", href: "/dashboard/expense", icon: Receipt },
           { title: "Bank & Cheques", href: "/dashboard/bank", icon: Landmark },
+          { title: "Deposits & Payments", href: "/dashboard/deposits-payments", icon: CreditCard },
           { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
           { title: "Assets", href: "/dashboard/assets", icon: Building },
           { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
+          { title: "Credit Notes & Returns", href: "/dashboard/credit-notes", icon: ArrowDownCircle },
         ],
       },
       {
@@ -134,6 +145,7 @@ const moduleNav: NavSection[] = [
           { title: "Cost Centers", href: "/dashboard/cost-centers", icon: Building2 },
           { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar },
           { title: "Payment Wizard", href: "/dashboard/payment-wizard", icon: CreditCard },
+          { title: "Recurring JEs & More", href: "/dashboard/finance-enhanced", icon: Repeat },
         ],
       },
     ],
@@ -172,6 +184,7 @@ const moduleNav: NavSection[] = [
         items: [
           { title: "Purchase Orders", href: "/dashboard/procurement", icon: Wheat },
           { title: "Requisitions & RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake },
+          { title: "3-Way Match & More", href: "/dashboard/purchase-enhanced", icon: FileCheck },
         ],
       },
     ],
@@ -184,6 +197,7 @@ const moduleNav: NavSection[] = [
         icon: Warehouse,
         items: [
           { title: "Stock & Warehouses", href: "/dashboard/inventory", icon: Warehouse },
+          { title: "Transfers & Counting", href: "/dashboard/inventory-enhanced", icon: ArrowLeftRight },
           { title: "Batch & Serial", href: "/dashboard/batch-serial", icon: Hash },
           { title: "Pick & Pack", href: "/dashboard/pick-pack", icon: PackageSearch },
           { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
@@ -208,6 +222,7 @@ const moduleNav: NavSection[] = [
         items: [
           { title: "Production Batches", href: "/dashboard/production", icon: Factory },
           { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory },
+          { title: "Capacity & Routing", href: "/dashboard/production-enhanced", icon: Route },
           { title: "BOM", href: "/dashboard/bom", icon: Layers },
           { title: "MRP Engine", href: "/dashboard/mrp", icon: Cog },
           { title: "Machines", href: "/dashboard/machines", icon: Cog },
@@ -238,6 +253,8 @@ const moduleNav: NavSection[] = [
         items: [
           { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
           { title: "Market Intel", href: "/dashboard/market", icon: TrendingUp },
+          { title: "Drag & Relate", href: "/dashboard/admin-tools", icon: Link2 },
+          { title: "Excel Export", href: "/dashboard/admin-tools", icon: Download },
           { title: "Documents", href: "/dashboard/documents", icon: FileText },
           { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
         ],
@@ -253,6 +270,7 @@ const moduleNav: NavSection[] = [
         items: [
           { title: "Settings", href: "/dashboard/settings", icon: Settings },
           { title: "Custom Tables & Auth", href: "/dashboard/admin-enhancements", icon: Shield },
+          { title: "UDF & Print Layouts", href: "/dashboard/admin-tools", icon: Printer },
         ],
       },
     ],
