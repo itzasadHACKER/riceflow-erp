@@ -579,25 +579,190 @@ Oracle may reclaim **idle** Always Free instances (very rare). To prevent this:
 
 ---
 
-## Connecting Your Domain to Oracle Cloud
+## Do I Need a Domain?
 
-If you buy a domain later, here's how to connect it:
+**No, a domain is NOT required.** You can use Grainix ERP with just the server's public IP address (e.g., `http://129.154.xxx.xxx`). Steps 10-13 above already cover the IP-only setup.
 
-### At your domain registrar (Namecheap, GoDaddy, etc.):
-Add DNS records:
+**However, a domain IS recommended** for production use because:
+- **SSL/HTTPS** — Free via Let's Encrypt, but requires a domain name. Without SSL, passwords are sent in plain text.
+- **Professional URL** — `erp.grainix.com` looks better than `http://129.154.45.67`
+- **Easier to remember** — Your team won't need to memorize an IP address
+- **WhatsApp/Email sharing** — Domain links look trustworthy, IP links look suspicious
+
+**Cost:** A domain costs Rs. 1,500-2,500/year ($5-10/year). Combined with Oracle Cloud Free Tier, your total annual cost is just the domain.
+
+---
+
+## Domain Setup (Optional but Recommended)
+
+### Step A: Buy a Domain Name
+
+**Cheapest domain registrars:**
+
+| Registrar | Price (`.com`) | Price (`.pk`) | Website |
+|---|---|---|---|
+| **Namecheap** | $8.88/year | N/A | https://www.namecheap.com |
+| **Cloudflare** | $8.57/year (at cost) | N/A | https://www.cloudflare.com/products/registrar |
+| **GoDaddy** | $12.99/year | N/A | https://www.godaddy.com |
+| **PKNIC** | N/A | Rs. 2,500/year | https://www.pknic.net.pk |
+| **Hostinger** | $9.99/year | N/A | https://www.hostinger.com |
+
+**Recommended:** Cloudflare Registrar (cheapest, no markup, free DNS management) or Namecheap (easy to use).
+
+**Suggested domain names for a rice mill:**
+- `grainixerp.com`
+- `yourcompanyname.com`
+- `yourcompanyname.pk` (for Pakistani businesses)
+- `erp.yourcompanyname.com` (as a subdomain of your existing domain)
+
+### Step B: Point Domain DNS to Oracle Cloud Server
+
+After buying your domain, you need to add DNS records that point your domain to your Oracle Cloud server's IP address.
+
+#### B.1 — If using Namecheap:
+
+1. Log in to https://www.namecheap.com
+2. Go to **Domain List** → click **Manage** next to your domain
+3. Click **Advanced DNS** tab
+4. Delete any existing A records or CNAME records for `@` and `www`
+5. Click **Add New Record** and add:
+
+| Type | Host | Value | TTL |
+|---|---|---|---|
+| **A Record** | `@` | `129.154.xxx.xxx` (your Oracle IP) | Automatic |
+| **A Record** | `www` | `129.154.xxx.xxx` (your Oracle IP) | Automatic |
+
+6. Click the green checkmark to save each record
+
+#### B.2 — If using Cloudflare:
+
+1. Log in to https://dash.cloudflare.com
+2. Click your domain → **DNS** → **Records**
+3. Click **Add Record** and add:
+
+| Type | Name | Content | Proxy | TTL |
+|---|---|---|---|---|
+| **A** | `@` | `129.154.xxx.xxx` | DNS only (gray cloud) | Auto |
+| **A** | `www` | `129.154.xxx.xxx` | DNS only (gray cloud) | Auto |
+
+**Important:** Set proxy to **"DNS only"** (gray cloud icon), NOT "Proxied" (orange cloud). This is needed for Certbot SSL to work.
+
+#### B.3 — If using GoDaddy:
+
+1. Log in to https://www.godaddy.com → **My Products** → **DNS**
+2. Click **Manage** next to your domain
+3. Under **DNS Records**, edit or add:
 
 | Type | Name | Value | TTL |
 |---|---|---|---|
-| A | @ | `129.154.xxx.xxx` | 300 |
-| A | www | `129.154.xxx.xxx` | 300 |
+| **A** | `@` | `129.154.xxx.xxx` | 600 |
+| **A** | `www` | `129.154.xxx.xxx` | 600 |
 
-### On your server:
-1. Update Nginx config with your domain name
-2. Update `CORS_ORIGINS` in backend `.env`
-3. Update `NEXT_PUBLIC_API_URL` in frontend `.env.local`
-4. Run `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com`
-5. Rebuild frontend: `cd apps/frontend && npm run build`
-6. Restart: `pm2 restart all`
+4. Click **Save**
+
+#### B.4 — If using a subdomain (e.g., `erp.yourcompany.com`):
+
+If you already have a domain and want to use a subdomain:
+
+1. Go to your domain's DNS settings
+2. Add only ONE record:
+
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| **A** | `erp` | `129.154.xxx.xxx` | 300 |
+
+3. Use `erp.yourcompany.com` everywhere in the setup instead of `yourdomain.com`
+
+### Step C: Verify DNS is Working
+
+Wait 5-30 minutes for DNS propagation, then verify:
+
+```bash
+# From your local computer or the Oracle server:
+ping yourdomain.com
+```
+
+You should see responses from your Oracle Cloud IP address (`129.154.xxx.xxx`). If not, wait longer or check your DNS records.
+
+You can also check at https://www.whatsmydns.net — enter your domain and verify the A record shows your Oracle IP worldwide.
+
+### Step D: Update Server Configuration for Domain
+
+SSH into your Oracle Cloud server and run these commands:
+
+#### D.1 — Update Nginx config:
+```bash
+sudo nano /etc/nginx/sites-available/grainix-erp
+```
+
+Replace the `server_name` line:
+```nginx
+server_name yourdomain.com www.yourdomain.com;
+```
+
+Save (`Ctrl+X` → `Y` → `Enter`), then test and reload:
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+#### D.2 — Get free SSL certificate:
+```bash
+sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+```
+
+Follow the prompts (enter email, agree to terms). Certbot automatically configures HTTPS and redirects HTTP to HTTPS.
+
+Verify auto-renewal works:
+```bash
+sudo certbot renew --dry-run
+```
+
+#### D.3 — Update backend environment:
+```bash
+nano /var/www/riceflow-erp/apps/backend/.env
+```
+
+Change `CORS_ORIGINS`:
+```env
+CORS_ORIGINS="https://yourdomain.com,https://www.yourdomain.com"
+```
+
+#### D.4 — Update frontend environment:
+```bash
+nano /var/www/riceflow-erp/apps/frontend/.env.local
+```
+
+Change:
+```env
+NEXT_PUBLIC_API_URL=https://yourdomain.com/api/v1
+```
+
+#### D.5 — Rebuild and restart:
+```bash
+cd /var/www/riceflow-erp/apps/frontend
+npm run build
+cd ../..
+pm2 restart all
+```
+
+#### D.6 — Test:
+Open `https://yourdomain.com` in your browser. You should see Grainix ERP with a secure padlock icon in the address bar.
+
+---
+
+## Summary: With Domain vs Without Domain
+
+| Feature | Without Domain (IP only) | With Domain + SSL |
+|---|---|---|
+| **Access URL** | `http://129.154.xxx.xxx` | `https://yourdomain.com` |
+| **HTTPS/SSL** | No (passwords sent in plain text) | Yes (encrypted, free via Let's Encrypt) |
+| **Annual cost** | $0 | $5-10/year (domain only) |
+| **Professional look** | No | Yes |
+| **Shareable link** | Ugly IP address | Clean branded URL |
+| **SEO/Search** | N/A | Can be indexed |
+
+**Recommendation:** Start with IP-only to test everything works. Buy a domain when you're ready for production use.
 
 ---
 
