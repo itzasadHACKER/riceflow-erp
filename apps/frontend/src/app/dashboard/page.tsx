@@ -27,6 +27,10 @@ import {
   Layers,
   UserCheck,
   Tag,
+  Megaphone,
+  Mail,
+  PiggyBank,
+  Percent,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -70,6 +74,10 @@ const quickLinks = [
   { title: "BOM", href: "/dashboard/bom", icon: Layers, desc: "Bill of Materials" },
   { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck, desc: "Sales Team" },
   { title: "Categories", href: "/dashboard/product-categories", icon: Tag, desc: "Product Types" },
+  { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone, desc: "Company News" },
+  { title: "Email", href: "/dashboard/email", icon: Mail, desc: "Communication" },
+  { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank, desc: "Budget Plans" },
+  { title: "Commissions", href: "/dashboard/commissions", icon: Percent, desc: "Agent Commissions" },
 ];
 
 export default function DashboardPage() {

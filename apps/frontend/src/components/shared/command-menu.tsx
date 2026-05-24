@@ -41,6 +41,9 @@ import {
   Layers,
   UserCheck,
   Tag,
+  Megaphone,
+  Mail,
+  PiggyBank,
 } from "lucide-react";
 
 interface CommandMenuProps {
@@ -77,6 +80,9 @@ const pages = [
   { title: "Bill of Materials", href: "/dashboard/bom", icon: Layers },
   { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
   { title: "Product Categories", href: "/dashboard/product-categories", icon: Tag },
+  { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
+  { title: "Email & Communication", href: "/dashboard/email", icon: Mail },
+  { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
 ];
 
 const actions = [
@@ -91,6 +97,9 @@ const actions = [
   { title: "New Gate Pass", href: "/dashboard/gate-pass", icon: Plus },
   { title: "New Salesperson", href: "/dashboard/salespersons", icon: Plus },
   { title: "New BOM", href: "/dashboard/bom", icon: Plus },
+  { title: "New Announcement", href: "/dashboard/announcements", icon: Plus },
+  { title: "New Budget", href: "/dashboard/budgeting", icon: Plus },
+  { title: "Compose Email", href: "/dashboard/email", icon: Plus },
 ];
 
 export function CommandMenu({ open, onOpenChange }: CommandMenuProps) {

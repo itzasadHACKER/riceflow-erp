@@ -33,6 +33,9 @@ import {
   Layers,
   UserCheck,
   Tag,
+  Megaphone,
+  Mail,
+  PiggyBank,
 } from "lucide-react";
 import {
   Sidebar,
@@ -71,6 +74,7 @@ const moduleNav = [
       { title: "Organization", href: "/dashboard/organization", icon: Building2 },
       { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
       { title: "Workflow", href: "/dashboard/workflow", icon: GitBranch },
+      { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
     ],
   },
   {
@@ -81,6 +85,7 @@ const moduleNav = [
       { title: "Bank", href: "/dashboard/bank", icon: Landmark },
       { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
       { title: "Assets", href: "/dashboard/assets", icon: Building },
+      { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
     ],
   },
   {
@@ -113,6 +118,7 @@ const moduleNav = [
       { title: "Market", href: "/dashboard/market", icon: TrendingUp },
       { title: "Documents", href: "/dashboard/documents", icon: FileText },
       { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+      { title: "Email", href: "/dashboard/email", icon: Mail },
       { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
     ],
   },
