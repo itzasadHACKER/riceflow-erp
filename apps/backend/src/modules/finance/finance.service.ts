@@ -2589,7 +2589,7 @@ export class FinanceService {
       debitAccountId = cashAccount.id;
       debitNarration = `Cash received - ${receipt.receiptNumber}`;
     } else {
-      const receivablesAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1300' } });
+      const receivablesAccount = await this.prisma.chartOfAccount.findFirst({ where: { organizationId, code: '1130' } });
       if (!receivablesAccount) throw new BadRequestException('Accounts Receivable account not found');
       debitAccountId = receivablesAccount.id;
       debitNarration = `Receivable from customer - ${receipt.receiptNumber}`;
