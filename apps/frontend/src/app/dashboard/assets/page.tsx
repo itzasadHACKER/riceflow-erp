@@ -37,11 +37,12 @@ export default function AssetsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: "", category: "MACHINERY", purchaseDate: todayISO(), purchaseValue: "", depreciationMethod: "SLM", usefulLife: "10", location: "" });
 
-  const { data: assets = [], isLoading } = useApiList<Asset>(["assets"], "/assets");
+  const { data: rawAssets, isLoading } = useApiList<Asset>(["assets"], "/assets");
   const createMutation = useApiMutation<Asset, unknown>("/assets", "post", [["assets"]]);
 
-  const totalValue = (assets || []).reduce((s, a) => s + Number(a.currentValue || 0), 0);
-  const totalCost = (assets || []).reduce((s, a) => s + Number(a.purchaseValue || 0), 0);
+  const assets: Asset[] = Array.isArray(rawAssets) ? rawAssets : Array.isArray((rawAssets as unknown as { data: Asset[] })?.data) ? (rawAssets as unknown as { data: Asset[] }).data : [];
+  const totalValue = assets.reduce((s, a) => s + Number(a.currentValue || 0), 0);
+  const totalCost = assets.reduce((s, a) => s + Number(a.purchaseValue || 0), 0);
 
   return (
     <div className="space-y-6">
