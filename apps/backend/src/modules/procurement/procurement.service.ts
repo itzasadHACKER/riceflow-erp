@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -14,10 +16,16 @@ import {
   CreatePurchaseRateDto,
   CreateQualityTestDto,
 } from './dto/procurement.dto';
+import { GeneralLedgerService } from '../accounting-engine/general-ledger.service';
+import { StockLedgerService } from '../accounting-engine/stock-ledger.service';
 
 @Injectable()
 export class ProcurementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(GeneralLedgerService) private readonly glService?: GeneralLedgerService,
+    @Optional() @Inject(StockLedgerService) private readonly stockLedgerService?: StockLedgerService,
+  ) {}
 
   // ===== SUPPLIERS =====
 
@@ -276,6 +284,50 @@ export class ProcurementService {
       });
 
       return { purchase, journalEntry };
+    }).then(async (result) => {
+      // Post to centralized GL (enterprise accounting engine)
+      if (this.glService) {
+        try {
+          const inventoryAccount = await this.prisma.chartOfAccount.findFirst({
+            where: { organizationId, code: '1140' },
+          });
+          const payableAccount = await this.prisma.chartOfAccount.findFirst({
+            where: { organizationId, code: '2110' },
+          });
+
+          if (inventoryAccount && payableAccount) {
+            await this.glService.postToLedger(organizationId, userId, {
+              voucherType: 'Paddy Purchase',
+              voucherNo: purchase.purchaseNumber,
+              voucherId: purchase.id,
+              postingDate: new Date(purchase.date).toISOString().split('T')[0],
+              journalEntryId: result.journalEntry.id,
+              remarks: `Paddy purchase ${purchase.purchaseNumber} - ${purchase.supplier.name}`,
+              entries: [
+                {
+                  accountId: inventoryAccount.id,
+                  debit: Number(purchase.netAmount),
+                  credit: 0,
+                  remarks: `Paddy inventory - ${purchase.purchaseNumber}`,
+                },
+                {
+                  accountId: payableAccount.id,
+                  debit: 0,
+                  credit: Number(purchase.netAmount),
+                  partyType: 'SUPPLIER',
+                  partyId: purchase.supplierId,
+                  partyName: purchase.supplier.name,
+                  remarks: `Payable - ${purchase.supplier.name}`,
+                },
+              ],
+            });
+          }
+        } catch (glError) {
+          console.warn('GL posting for paddy purchase failed:', glError);
+        }
+      }
+
+      return result;
     });
   }
 

@@ -181,6 +181,11 @@ model Organization {
   weighbridgeSlips   WeighbridgeSlip[]
   bardanaTransactions BardanaTransaction[]
   purchaseInvoices   PurchaseInvoice[]
+  generalLedgerEntries GeneralLedgerEntry[]
+  stockLedgerEntries StockLedgerEntry[]
+  paymentEntries     PaymentEntry[]
+  taxTemplates       TaxTemplate[]
+  accountingPeriods  AccountingPeriod[]
 
   @@map("organizations")
 }
@@ -537,6 +542,52 @@ enum AccountType {
   EXPENSE
 }
 
+enum AccountSubType {
+  CASH
+  BANK
+  ACCOUNTS_RECEIVABLE
+  ACCOUNTS_PAYABLE
+  INVENTORY
+  FIXED_ASSET
+  ACCUMULATED_DEPRECIATION
+  CAPITAL
+  RETAINED_EARNINGS
+  SALES_REVENUE
+  COST_OF_GOODS_SOLD
+  OPERATING_EXPENSE
+  TAX_PAYABLE
+  TAX_RECEIVABLE
+  ADVANCE_RECEIVED
+  ADVANCE_PAID
+  WORK_IN_PROGRESS
+  DEPRECIATION_EXPENSE
+  INTEREST_INCOME
+  INTEREST_EXPENSE
+  DISCOUNT_ALLOWED
+  DISCOUNT_RECEIVED
+  OTHER
+}
+
+enum ReportType {
+  BALANCE_SHEET
+  PROFIT_AND_LOSS
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SUBMITTED
+  CANCELLED
+  AMENDED
+}
+
+enum PartyType {
+  CUSTOMER
+  SUPPLIER
+  EMPLOYEE
+  SHAREHOLDER
+}
+
 enum BalanceType {
   DEBIT
   CREDIT
@@ -599,25 +650,43 @@ model FiscalYear {
 }
 
 model ChartOfAccount {
-  id             String      @id @default(uuid()) @db.Uuid
-  organizationId String      @map("organization_id") @db.Uuid
-  code           String
-  name           String
-  accountType    AccountType @map("account_type")
-  parentId       String?     @map("parent_id") @db.Uuid
-  isGroup        Boolean     @default(false) @map("is_group")
-  isSystem       Boolean     @default(false) @map("is_system")
-  balanceType    BalanceType @map("balance_type")
-  openingBalance Decimal     @default(0) @map("opening_balance") @db.Decimal(18, 4)
-  description    String?
-  isActive       Boolean     @default(true) @map("is_active")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  code             String
+  name             String
+  accountType      AccountType     @map("account_type")
+  accountSubType   AccountSubType? @map("account_sub_type")
+  reportType       ReportType?     @map("report_type")
+  rootType         AccountType?    @map("root_type")
+  parentId         String?         @map("parent_id") @db.Uuid
+  isGroup          Boolean         @default(false) @map("is_group")
+  isSystem         Boolean         @default(false) @map("is_system")
+  isFrozen         Boolean         @default(false) @map("is_frozen")
+  balanceType      BalanceType     @map("balance_type")
+  currency         String          @default("PKR")
+  openingBalance   Decimal         @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  openingDebit     Decimal         @default(0) @map("opening_debit") @db.Decimal(18, 4)
+  openingCredit    Decimal         @default(0) @map("opening_credit") @db.Decimal(18, 4)
+  closingBalance   Decimal         @default(0) @map("closing_balance") @db.Decimal(18, 4)
+  description      String?
+  taxRate          Decimal?        @map("tax_rate") @db.Decimal(5, 2)
+  interCompany     Boolean         @default(false) @map("inter_company")
+  allowedPartyTypes String[]       @map("allowed_party_types")
+  mandatoryCostCenter Boolean      @default(false) @map("mandatory_cost_center")
+  defaultCostCenterId String?      @map("default_cost_center_id") @db.Uuid
+  level            Int             @default(0)
+  lft              Int             @default(0)
+  rgt              Int             @default(0)
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parent            ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children          ChartOfAccount[]   @relation("AccountHierarchy")
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent            ChartOfAccount?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children          ChartOfAccount[]     @relation("AccountHierarchy")
+  defaultCostCenter CostCenter?          @relation("DefaultCostCenter", fields: [defaultCostCenterId], references: [id])
   journalEntryLines JournalEntryLine[]
+  glEntries         GeneralLedgerEntry[]
   bankAccounts      BankAccount[]
   taxConfigurations TaxConfiguration[]
   budgetLines       BudgetLine[]
@@ -625,29 +694,53 @@ model ChartOfAccount {
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([parentId])
+  @@index([organizationId, accountType])
+  @@index([organizationId, isGroup])
+  @@index([organizationId, accountSubType])
   @@map("chart_of_accounts")
 }
 
 model JournalEntry {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  entryNumber    String           @map("entry_number")
-  date           DateTime         @db.Date
-  reference      String?
-  narration      String?
-  entryType      JournalEntryType @default(MANUAL) @map("entry_type")
-  fiscalYearId   String           @map("fiscal_year_id") @db.Uuid
-  isPosted       Boolean          @default(false) @map("is_posted")
-  postedBy       String?          @map("posted_by") @db.Uuid
-  postedAt       DateTime?        @map("posted_at")
-  createdBy      String?          @map("created_by") @db.Uuid
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  deletedAt      DateTime?        @map("deleted_at")
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  entryNumber      String           @map("entry_number")
+  date             DateTime         @db.Date
+  reference        String?
+  narration        String?
+  entryType        JournalEntryType @default(MANUAL) @map("entry_type")
+  fiscalYearId     String           @map("fiscal_year_id") @db.Uuid
+  docStatus        Int              @default(0) @map("doc_status")
+  isPosted         Boolean          @default(false) @map("is_posted")
+  postedBy         String?          @map("posted_by") @db.Uuid
+  postedAt         DateTime?        @map("posted_at")
+  voucherType      String?          @map("voucher_type")
+  voucherNo        String?          @map("voucher_no")
+  isReversed       Boolean          @default(false) @map("is_reversed")
+  reversedById     String?          @map("reversed_by_id") @db.Uuid
+  reversalOfId     String?          @map("reversal_of_id") @db.Uuid
+  isMultiCurrency  Boolean          @default(false) @map("is_multi_currency")
+  payTo            String?          @map("pay_to")
+  totalDebit       Decimal          @default(0) @map("total_debit") @db.Decimal(18, 4)
+  totalCredit      Decimal          @default(0) @map("total_credit") @db.Decimal(18, 4)
+  difference       Decimal          @default(0) @db.Decimal(18, 4)
+  chequeNo         String?          @map("cheque_no")
+  chequeDate       DateTime?        @map("cheque_date") @db.Date
+  userRemark       String?          @map("user_remark") @db.Text
+  submittedBy      String?          @map("submitted_by") @db.Uuid
+  submittedAt      DateTime?        @map("submitted_at")
+  cancelledBy      String?          @map("cancelled_by") @db.Uuid
+  cancelledAt      DateTime?        @map("cancelled_at")
+  cancellationReason String?        @map("cancellation_reason")
+  amendedFromId    String?          @map("amended_from_id") @db.Uuid
+  createdBy        String?          @map("created_by") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  deletedAt        DateTime?        @map("deleted_at")
 
   organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   fiscalYear         FiscalYear           @relation(fields: [fiscalYearId], references: [id])
   lines              JournalEntryLine[]
+  glEntries          GeneralLedgerEntry[]
   salarySlips        SalarySlip[]
   paymentVouchers    PaymentVoucher[]
   receiptVouchers    ReceiptVoucher[]
@@ -664,25 +757,44 @@ model JournalEntry {
   @@unique([organizationId, entryNumber])
   @@index([organizationId, date])
   @@index([fiscalYearId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([organizationId, docStatus])
   @@map("journal_entries")
 }
 
 model JournalEntryLine {
-  id             String  @id @default(uuid()) @db.Uuid
-  journalEntryId String  @map("journal_entry_id") @db.Uuid
-  accountId      String  @map("account_id") @db.Uuid
-  debit          Decimal @default(0) @db.Decimal(18, 4)
-  credit         Decimal @default(0) @db.Decimal(18, 4)
-  narration      String?
-  costCenter     String? @map("cost_center")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                String   @id @default(uuid()) @db.Uuid
+  journalEntryId    String   @map("journal_entry_id") @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  debit             Decimal  @default(0) @db.Decimal(18, 4)
+  credit            Decimal  @default(0) @db.Decimal(18, 4)
+  narration         String?
+  partyType         String?  @map("party_type")
+  partyId           String?  @map("party_id") @db.Uuid
+  partyName         String?  @map("party_name")
+  costCenterId      String?  @map("cost_center_id") @db.Uuid
+  projectId         String?  @map("project_id") @db.Uuid
+  againstAccount    String?  @map("against_account")
+  referenceType     String?  @map("reference_type")
+  referenceId       String?  @map("reference_id") @db.Uuid
+  referenceName     String?  @map("reference_name")
+  isAdvance         Boolean  @default(false) @map("is_advance")
+  accountCurrency   String   @default("PKR") @map("account_currency")
+  exchangeRate      Decimal  @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  debitInAccountCurrency  Decimal @default(0) @map("debit_in_account_currency") @db.Decimal(18, 4)
+  creditInAccountCurrency Decimal @default(0) @map("credit_in_account_currency") @db.Decimal(18, 4)
+  createdAt         DateTime @default(now()) @map("created_at")
 
   journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      ChartOfAccount @relation(fields: [accountId], references: [id])
+  costCenter   CostCenter?    @relation("JELineCostCenter", fields: [costCenterId], references: [id])
+  project      Project?       @relation("JELineProject", fields: [projectId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
   @@index([accountId, journalEntryId])
+  @@index([partyType, partyId])
+  @@index([costCenterId])
   @@map("journal_entry_lines")
 }
 
@@ -2589,7 +2701,7 @@ model DowntimeLog {
 // DOCUMENT MANAGEMENT
 // ============================================================================
 
-enum DocumentStatus {
+enum DocMgmtStatus {
   DRAFT_DOC
   ACTIVE_DOC
   ARCHIVED
@@ -2608,7 +2720,7 @@ model Document {
   fileSize       Int?           @map("file_size")
   mimeType       String?        @map("mime_type")
   version        Int            @default(1)
-  status         DocumentStatus @default(ACTIVE_DOC)
+  status         DocMgmtStatus @default(ACTIVE_DOC)
   tags           String[]       @default([])
   description    String?
   expiryDate     DateTime?      @map("expiry_date") @db.Date
@@ -2655,7 +2767,7 @@ model Contract {
   value          Decimal?       @db.Decimal(18, 4)
   currency       String         @default("PKR")
   terms          String?        @db.Text
-  status         DocumentStatus @default(ACTIVE_DOC)
+  status         DocMgmtStatus @default(ACTIVE_DOC)
   renewalDate    DateTime?      @map("renewal_date") @db.Date
   autoRenew      Boolean        @default(false) @map("auto_renew")
   signedBy       String?        @map("signed_by")
@@ -4034,6 +4146,8 @@ model Project {
   timesheets       Timesheet[]
   projectExpenses  ProjectExpense[]
   milestones       ProjectMilestone[]
+  glEntries        GeneralLedgerEntry[]
+  jeLines          JournalEntryLine[] @relation("JELineProject")
 
   @@index([organizationId, status])
   @@map("projects")
@@ -4511,6 +4625,9 @@ model CostCenter {
 
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   allocations      CostAllocation[]
+  defaultForAccounts ChartOfAccount[] @relation("DefaultCostCenter")
+  glEntries        GeneralLedgerEntry[]
+  jeLines          JournalEntryLine[] @relation("JELineCostCenter")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -5058,5 +5175,265 @@ model PurchaseInvoiceItem {
 
   @@index([purchaseInvoiceId])
   @@map("purchase_invoice_items")
+}
+
+// ============================================================================
+// ENTERPRISE ACCOUNTING ENGINE — General Ledger (ERPNext/SAP ACDOCA equivalent)
+// ============================================================================
+
+enum GLEntryStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model GeneralLedgerEntry {
+  id                 String          @id @default(uuid()) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  postingDate        DateTime        @map("posting_date") @db.Date
+  accountId          String          @map("account_id") @db.Uuid
+  accountCode        String          @map("account_code")
+  accountName        String          @map("account_name")
+  debit              Decimal         @default(0) @db.Decimal(18, 4)
+  credit             Decimal         @default(0) @db.Decimal(18, 4)
+  debitInAccountCurrency  Decimal    @default(0) @map("debit_in_account_currency") @db.Decimal(18, 4)
+  creditInAccountCurrency Decimal    @default(0) @map("credit_in_account_currency") @db.Decimal(18, 4)
+  accountCurrency    String          @default("PKR") @map("account_currency")
+  exchangeRate       Decimal         @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  againstAccount     String?         @map("against_account")
+  againstVoucherType String?         @map("against_voucher_type")
+  againstVoucherId   String?         @map("against_voucher_id") @db.Uuid
+  voucherType        String          @map("voucher_type")
+  voucherNo          String          @map("voucher_no")
+  voucherId          String          @map("voucher_id") @db.Uuid
+  journalEntryId     String?         @map("journal_entry_id") @db.Uuid
+  partyType          String?         @map("party_type")
+  partyId            String?         @map("party_id") @db.Uuid
+  partyName          String?         @map("party_name")
+  costCenterId       String?         @map("cost_center_id") @db.Uuid
+  projectId          String?         @map("project_id") @db.Uuid
+  fiscalYear         String          @map("fiscal_year")
+  isOpening          Boolean         @default(false) @map("is_opening")
+  isAdvance          Boolean         @default(false) @map("is_advance")
+  isCancelled        Boolean         @default(false) @map("is_cancelled")
+  remarks            String?         @db.Text
+  createdBy          String?         @map("created_by") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account            ChartOfAccount  @relation(fields: [accountId], references: [id])
+  costCenter         CostCenter?     @relation(fields: [costCenterId], references: [id])
+  project            Project?        @relation(fields: [projectId], references: [id])
+  journalEntry       JournalEntry?   @relation(fields: [journalEntryId], references: [id])
+
+  @@index([organizationId, postingDate])
+  @@index([organizationId, accountId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([organizationId, partyType, partyId])
+  @@index([organizationId, costCenterId])
+  @@index([organizationId, projectId])
+  @@index([organizationId, fiscalYear])
+  @@index([organizationId, isCancelled])
+  @@index([accountId, postingDate])
+  @@map("general_ledger_entries")
+}
+
+// ============================================================================
+// STOCK LEDGER — Historical valuation tracking (ERPNext SLE equivalent)
+// ============================================================================
+
+enum ValuationMethod {
+  MOVING_AVERAGE
+  FIFO
+}
+
+model StockLedgerEntry {
+  id                   String          @id @default(uuid()) @db.Uuid
+  organizationId       String          @map("organization_id") @db.Uuid
+  postingDate          DateTime        @map("posting_date") @db.Date
+  postingTime          DateTime        @default(now()) @map("posting_time")
+  riceVarietyId        String          @map("rice_variety_id") @db.Uuid
+  warehouseId          String          @map("warehouse_id") @db.Uuid
+  actualQty            Decimal         @map("actual_qty") @db.Decimal(18, 4)
+  qtyAfterTransaction  Decimal         @map("qty_after_transaction") @db.Decimal(18, 4)
+  incomingRate         Decimal         @default(0) @map("incoming_rate") @db.Decimal(18, 4)
+  outgoingRate         Decimal         @default(0) @map("outgoing_rate") @db.Decimal(18, 4)
+  valuationRate        Decimal         @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  stockValue           Decimal         @default(0) @map("stock_value") @db.Decimal(18, 4)
+  stockValueDifference Decimal         @default(0) @map("stock_value_difference") @db.Decimal(18, 4)
+  valuationMethod      ValuationMethod @default(MOVING_AVERAGE) @map("valuation_method")
+  voucherType          String          @map("voucher_type")
+  voucherNo            String          @map("voucher_no")
+  voucherId            String          @map("voucher_id") @db.Uuid
+  batchNo              String?         @map("batch_no")
+  serialNo             String?         @map("serial_no")
+  hasGLEntry           Boolean         @default(false) @map("has_gl_entry")
+  isCancelled          Boolean         @default(false) @map("is_cancelled")
+  fiscalYear           String          @map("fiscal_year")
+  remarks              String?         @db.Text
+  createdBy            String?         @map("created_by") @db.Uuid
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, postingDate])
+  @@index([organizationId, riceVarietyId, warehouseId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([riceVarietyId, warehouseId, postingDate])
+  @@index([organizationId, isCancelled])
+  @@map("stock_ledger_entries")
+}
+
+// ============================================================================
+// UNIFIED PAYMENT ENTRY (ERPNext Payment Entry equivalent)
+// ============================================================================
+
+enum PaymentEntryType {
+  RECEIVE
+  PAY
+  INTERNAL_TRANSFER
+}
+
+model PaymentEntry {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  paymentNumber      String            @map("payment_number")
+  paymentType        PaymentEntryType  @map("payment_type")
+  postingDate        DateTime          @map("posting_date") @db.Date
+  partyType          String?           @map("party_type")
+  partyId            String?           @map("party_id") @db.Uuid
+  partyName          String?           @map("party_name")
+  paidFromAccountId  String            @map("paid_from_account_id") @db.Uuid
+  paidToAccountId    String            @map("paid_to_account_id") @db.Uuid
+  paidFromCurrency   String            @default("PKR") @map("paid_from_currency")
+  paidToCurrency     String            @default("PKR") @map("paid_to_currency")
+  paidAmount         Decimal           @map("paid_amount") @db.Decimal(18, 4)
+  receivedAmount     Decimal           @map("received_amount") @db.Decimal(18, 4)
+  exchangeRate       Decimal           @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  referenceNo        String?           @map("reference_no")
+  referenceDate      DateTime?         @map("reference_date") @db.Date
+  modeOfPayment      String?           @map("mode_of_payment")
+  costCenterId       String?           @map("cost_center_id") @db.Uuid
+  projectId          String?           @map("project_id") @db.Uuid
+  docStatus          Int               @default(0) @map("doc_status")
+  totalAllocatedAmount  Decimal        @default(0) @map("total_allocated_amount") @db.Decimal(18, 4)
+  unallocatedAmount  Decimal           @default(0) @map("unallocated_amount") @db.Decimal(18, 4)
+  differenceAmount   Decimal           @default(0) @map("difference_amount") @db.Decimal(18, 4)
+  writeoffAmount     Decimal           @default(0) @map("writeoff_amount") @db.Decimal(18, 4)
+  writeoffAccountId  String?           @map("writeoff_account_id") @db.Uuid
+  writeoffCostCenterId String?         @map("writeoff_cost_center_id") @db.Uuid
+  deductions         Json              @default("[]")
+  remarks            String?           @db.Text
+  letterHead         String?           @map("letter_head")
+  printHeading       String?           @map("print_heading")
+  bankAccountId      String?           @map("bank_account_id") @db.Uuid
+  submittedBy        String?           @map("submitted_by") @db.Uuid
+  submittedAt        DateTime?         @map("submitted_at")
+  cancelledBy        String?           @map("cancelled_by") @db.Uuid
+  cancelledAt        DateTime?         @map("cancelled_at")
+  cancellationReason String?           @map("cancellation_reason")
+  createdBy          String?           @map("created_by") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  references         PaymentEntryReference[]
+
+  @@unique([organizationId, paymentNumber])
+  @@index([organizationId, postingDate])
+  @@index([organizationId, partyType, partyId])
+  @@index([organizationId, docStatus])
+  @@map("payment_entries")
+}
+
+model PaymentEntryReference {
+  id                 String   @id @default(uuid()) @db.Uuid
+  paymentEntryId     String   @map("payment_entry_id") @db.Uuid
+  referenceDocType   String   @map("reference_doc_type")
+  referenceDocId     String   @map("reference_doc_id") @db.Uuid
+  referenceName      String   @map("reference_name")
+  dueDate            DateTime? @map("due_date") @db.Date
+  totalAmount        Decimal  @map("total_amount") @db.Decimal(18, 4)
+  outstandingAmount  Decimal  @map("outstanding_amount") @db.Decimal(18, 4)
+  allocatedAmount    Decimal  @map("allocated_amount") @db.Decimal(18, 4)
+  exchangeRate       Decimal  @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  exchangeGainLoss   Decimal  @default(0) @map("exchange_gain_loss") @db.Decimal(18, 4)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  paymentEntry       PaymentEntry @relation(fields: [paymentEntryId], references: [id], onDelete: Cascade)
+
+  @@index([paymentEntryId])
+  @@index([referenceDocType, referenceDocId])
+  @@map("payment_entry_references")
+}
+
+// ============================================================================
+// TAX TEMPLATES (ERPNext Sales/Purchase Taxes equivalent)
+// ============================================================================
+
+enum TaxTemplateType {
+  SALES
+  PURCHASE
+  BOTH
+}
+
+model TaxTemplate {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  name             String
+  type             TaxTemplateType @default(BOTH)
+  isDefault        Boolean         @default(false) @map("is_default")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rows             TaxTemplateRow[]
+
+  @@index([organizationId])
+  @@map("tax_templates")
+}
+
+model TaxTemplateRow {
+  id               String   @id @default(uuid()) @db.Uuid
+  taxTemplateId    String   @map("tax_template_id") @db.Uuid
+  chargeType       String   @map("charge_type")
+  accountId        String?  @map("account_id") @db.Uuid
+  description      String
+  rate             Decimal  @default(0) @db.Decimal(5, 2)
+  amount           Decimal  @default(0) @db.Decimal(18, 4)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  total            Decimal  @default(0) @db.Decimal(18, 4)
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  addDeductTax     String   @default("ADD") @map("add_deduct_tax")
+  included         Boolean  @default(false)
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  taxTemplate      TaxTemplate @relation(fields: [taxTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([taxTemplateId])
+  @@map("tax_template_rows")
+}
+
+// ============================================================================
+// ACCOUNTING PERIODS (ERPNext Accounting Period — controls posting windows)
+// ============================================================================
+
+model AccountingPeriod {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  periodName       String   @map("period_name")
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
+  isClosed         Boolean  @default(false) @map("is_closed")
+  closedDocTypes   String[] @map("closed_doc_types")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, startDate, endDate])
+  @@map("accounting_periods")
 }
 

@@ -54,6 +54,7 @@ import { MarketingCampaignModule } from './modules/marketing-campaign/marketing-
 import { FinancialPeriodModule } from './modules/financial-period/financial-period.module';
 import { ProductionOrderModule } from './modules/production-order/production-order.module';
 import { AdminEnhancementModule } from './modules/admin-enhancement/admin-enhancement.module';
+import { AccountingEngineModule } from './modules/accounting-engine/accounting-engine.module';
 
 @Module({
   imports: [
@@ -120,6 +121,7 @@ import { AdminEnhancementModule } from './modules/admin-enhancement/admin-enhanc
     FinancialPeriodModule,
     ProductionOrderModule,
     AdminEnhancementModule,
+    AccountingEngineModule,
   ],
 })
 export class AppModule {}

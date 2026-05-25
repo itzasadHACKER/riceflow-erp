@@ -2,6 +2,8 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -12,10 +14,14 @@ import {
   CreateSalesInvoiceDto,
   CreateDeliveryChallanDto,
 } from './dto/sales.dto';
+import { GeneralLedgerService } from '../accounting-engine/general-ledger.service';
 
 @Injectable()
 export class SalesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(GeneralLedgerService) private readonly glService?: GeneralLedgerService,
+  ) {}
 
   // ===== CUSTOMERS =====
 
@@ -365,6 +371,65 @@ export class SalesService {
       });
 
       return { invoice, journalEntry };
+    }).then(async (result) => {
+      // Post to centralized GL (enterprise accounting engine)
+      if (this.glService) {
+        try {
+          const receivableAccount = await this.prisma.chartOfAccount.findFirst({
+            where: { organizationId, code: '1130' },
+          });
+          const salesRevenueAccount = await this.prisma.chartOfAccount.findFirst({
+            where: { organizationId, code: '4100' },
+          });
+          const gstAccount = await this.prisma.chartOfAccount.findFirst({
+            where: { organizationId, code: '2130' },
+          });
+
+          if (receivableAccount && salesRevenueAccount) {
+            const entries = [
+              {
+                accountId: receivableAccount.id,
+                debit: Number(invoice.netAmount),
+                credit: 0,
+                partyType: 'CUSTOMER',
+                partyId: invoice.customerId,
+                partyName: invoice.customer.name,
+                remarks: `Receivable - ${invoice.invoiceNumber}`,
+              },
+              {
+                accountId: salesRevenueAccount.id,
+                debit: 0,
+                credit: Number(invoice.totalAmount) - Number(invoice.discount),
+                remarks: `Sales revenue - ${invoice.invoiceNumber}`,
+              },
+            ];
+
+            // Add GST entry if tax exists
+            if (Number(invoice.taxAmount) > 0 && gstAccount) {
+              entries.push({
+                accountId: gstAccount.id,
+                debit: 0,
+                credit: Number(invoice.taxAmount),
+                remarks: `GST on ${invoice.invoiceNumber}`,
+              } as any);
+            }
+
+            await this.glService.postToLedger(organizationId, userId, {
+              voucherType: 'Sales Invoice',
+              voucherNo: invoice.invoiceNumber,
+              voucherId: invoice.id,
+              postingDate: new Date(invoice.date).toISOString().split('T')[0],
+              journalEntryId: result.journalEntry.id,
+              remarks: `Sales invoice ${invoice.invoiceNumber} - ${invoice.customer.name}`,
+              entries,
+            });
+          }
+        } catch (glError) {
+          // GL posting is supplementary — don't fail the main operation
+          console.warn('GL posting for sales invoice failed:', glError);
+        }
+      }
+      return result;
     });
   }
 

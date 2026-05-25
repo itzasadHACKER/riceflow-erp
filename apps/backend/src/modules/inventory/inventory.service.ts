@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -13,10 +15,14 @@ import {
   CreateStockMovementDto,
   CreateStockAdjustmentDto,
 } from './dto/inventory.dto';
+import { StockLedgerService } from '../accounting-engine/stock-ledger.service';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(StockLedgerService) private readonly stockLedgerService?: StockLedgerService,
+  ) {}
 
   // ===== WAREHOUSES =====
 
@@ -282,6 +288,63 @@ export class InventoryService {
               },
             });
           }
+        }
+      }
+
+      // Post to Stock Ledger (enterprise accounting engine)
+      if (this.stockLedgerService && dto.riceVarietyId) {
+        try {
+          if (movType === 'IN' && dto.destinationWarehouseId) {
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.destinationWarehouseId,
+              actualQty: dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Movement',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: dto.narration || `Stock IN - ${dto.riceVarietyId}`,
+            });
+          } else if (movType === 'OUT' && dto.sourceWarehouseId) {
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.sourceWarehouseId,
+              actualQty: -dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Movement',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: dto.narration || `Stock OUT - ${dto.riceVarietyId}`,
+            });
+          } else if (movType === 'TRANSFER' && dto.sourceWarehouseId && dto.destinationWarehouseId) {
+            // Transfer = OUT from source + IN to destination
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.sourceWarehouseId,
+              actualQty: -dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Transfer',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: `Transfer OUT to ${dto.destinationWarehouseId}`,
+            });
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.destinationWarehouseId,
+              actualQty: dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Transfer',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: `Transfer IN from ${dto.sourceWarehouseId}`,
+            });
+          }
+        } catch (sleError) {
+          console.warn('Stock ledger entry creation failed:', sleError);
         }
       }
 
