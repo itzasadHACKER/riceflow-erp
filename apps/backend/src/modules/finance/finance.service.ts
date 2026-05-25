@@ -183,9 +183,10 @@ export class FinanceService {
     const account = await this.getAccount(organizationId, id);
     if (account.isSystem)
       throw new BadRequestException('Cannot modify system accounts');
+    const { defaultCostCenterId, ...updateData } = dto;
     return this.prisma.chartOfAccount.update({
       where: { id },
-      data: dto,
+      data: updateData as any,
     });
   }
 
@@ -357,7 +358,7 @@ export class FinanceService {
           date: new Date(dto.date),
           reference: dto.reference,
           narration: dto.narration,
-          entryType: dto.entryType ?? 'MANUAL',
+          entryType: (dto.entryType ?? 'MANUAL') as any,
           fiscalYearId: dto.fiscalYearId,
           createdBy: userId,
           lines: {
@@ -366,7 +367,7 @@ export class FinanceService {
               debit: line.debit,
               credit: line.credit,
               narration: line.narration,
-              costCenter: line.costCenter,
+              costCenter: line.costCenterId,
             })),
           },
         },
@@ -420,7 +421,7 @@ export class FinanceService {
       };
     }
     if (filter.fiscalYearId) where.fiscalYearId = filter.fiscalYearId;
-    if (filter.entryType) where.entryType = filter.entryType;
+    if (filter.entryType) where.entryType = filter.entryType as any;
     if (filter.isPosted !== undefined) where.isPosted = filter.isPosted;
 
     const [data, total] = await Promise.all([
@@ -894,7 +895,7 @@ export class FinanceService {
           partyType: dto.partyType,
           partyId: dto.partyId,
           amount: dto.amount,
-          paymentMode: dto.paymentMode,
+          paymentMode: dto.paymentMode as any,
           bankAccountId: dto.bankAccountId,
           chequeNumber: dto.chequeNumber,
           reference: dto.reference,
@@ -1000,7 +1001,7 @@ export class FinanceService {
           partyType: dto.partyType,
           partyId: dto.partyId,
           amount: dto.amount,
-          paymentMode: dto.paymentMode,
+          paymentMode: dto.paymentMode as any,
           bankAccountId: dto.bankAccountId,
           chequeNumber: dto.chequeNumber,
           reference: dto.reference,

@@ -464,9 +464,9 @@ export class ProcurementService {
         foreignMatter: dto.foreignMatter,
         chalkyGrains: dto.chalkyGrains,
         damagedGrains: dto.damagedGrains,
-        grade: dto.grade,
+        grade: dto.overallGrade,
         testedBy: dto.testedBy,
-        notes: dto.notes,
+        notes: dto.testNotes,
       },
       include: { paddyPurchase: true },
     });
