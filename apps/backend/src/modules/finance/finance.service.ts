@@ -123,11 +123,22 @@ export class FinanceService {
         code: dto.code,
         name: dto.name,
         accountType: dto.accountType,
+        accountSubType: dto.accountSubType as any,
         balanceType: dto.balanceType,
+        rootType: dto.rootType as any,
+        reportType: dto.reportType as any,
         parentId: dto.parentId,
         isGroup: dto.isGroup ?? false,
+        isFrozen: dto.isFrozen ?? false,
+        currency: dto.accountCurrency ?? 'PKR',
         openingBalance: dto.openingBalance ?? 0,
+        openingDebit: dto.openingDebit ?? 0,
+        openingCredit: dto.openingCredit ?? 0,
         description: dto.description,
+        taxRate: dto.taxRate,
+        allowedPartyTypes: dto.allowedPartyTypes ? dto.allowedPartyTypes.split(',').map(s => s.trim()) : [],
+        mandatoryCostCenter: dto.mandatoryCostCenter ?? false,
+        defaultCostCenterId: dto.defaultCostCenterId,
       },
     });
   }
@@ -351,6 +362,9 @@ export class FinanceService {
     return this.prisma.$transaction(async (tx) => {
       const entryNumber = await this.generateEntryNumber(tx, organizationId);
 
+      const totalDebit = dto.lines.reduce((sum, l) => sum + (l.debit || 0), 0);
+      const totalCredit = dto.lines.reduce((sum, l) => sum + (l.credit || 0), 0);
+
       const entry = await tx.journalEntry.create({
         data: {
           organizationId,
@@ -361,13 +375,33 @@ export class FinanceService {
           entryType: (dto.entryType ?? 'MANUAL') as any,
           fiscalYearId: dto.fiscalYearId,
           createdBy: userId,
+          chequeNo: dto.chequeNo,
+          chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
+          userRemark: dto.userRemark,
+          isMultiCurrency: dto.multiCurrency ?? false,
+          totalDebit,
+          totalCredit,
+          difference: totalDebit - totalCredit,
           lines: {
-            create: dto.lines.map((line) => ({
+            create: dto.lines.map((line, idx) => ({
               accountId: line.accountId,
               debit: line.debit,
               credit: line.credit,
               narration: line.narration,
-              costCenter: line.costCenterId,
+              costCenterId: line.costCenterId,
+              projectId: line.projectId,
+              partyType: line.partyType,
+              partyId: line.partyId,
+              partyName: line.partyName,
+              againstAccount: line.againstAccount,
+              isAdvance: line.isAdvance ?? false,
+              referenceType: line.referenceType,
+              referenceId: line.referenceId,
+              referenceName: line.referenceName,
+              accountCurrency: line.accountCurrency ?? 'PKR',
+              exchangeRate: line.exchangeRate ?? 1,
+              debitInAccountCurrency: line.debitInAccountCurrency ?? line.debit,
+              creditInAccountCurrency: line.creditInAccountCurrency ?? line.credit,
             })),
           },
         },
@@ -793,9 +827,16 @@ export class FinanceService {
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         branchCode: dto.branchCode,
+        branchName: dto.branchName,
         iban: dto.iban,
+        swiftCode: dto.swiftCode,
+        bankGuarantee: dto.bankGuaranteeLimit ? true : false,
+        bankGuaranteeAmount: dto.bankGuaranteeLimit ?? 0,
+        currency: dto.accountCurrency ?? 'PKR',
+        lastIntegrationDate: dto.lastIntegrationDate ? new Date(dto.lastIntegrationDate) : undefined,
         accountId: dto.accountId,
         openingBalance: dto.openingBalance ?? 0,
+        isDefault: dto.isDefault ?? false,
       },
     });
   }
