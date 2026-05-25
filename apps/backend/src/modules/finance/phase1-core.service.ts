@@ -1118,8 +1118,6 @@ export class Phase1CoreService {
           lotNumber: item.lotNumber,
           batchNo: item.batchNo,
           serialNo: item.serialNo,
-          bagCount: item.bagCount,
-          bagWeight: item.bagWeight ? new Prisma.Decimal(item.bagWeight) : null,
           idx,
         };
       });
