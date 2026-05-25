@@ -3,6 +3,8 @@ import {
   NotFoundException,
   BadRequestException,
   ConflictException,
+  Inject,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { Prisma } from '@prisma/client';
@@ -13,10 +15,14 @@ import {
   CreateStockMovementDto,
   CreateStockAdjustmentDto,
 } from './dto/inventory.dto';
+import { StockLedgerService } from '../accounting-engine/stock-ledger.service';
 
 @Injectable()
 export class InventoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() @Inject(StockLedgerService) private readonly stockLedgerService?: StockLedgerService,
+  ) {}
 
   // ===== WAREHOUSES =====
 
@@ -32,8 +38,16 @@ export class InventoryService {
         organizationId,
         name: dto.name,
         code: dto.code,
+        warehouseType: dto.warehouseType,
+        isGroup: dto.isGroup ?? false,
+        parentWarehouseId: dto.parentWarehouseId,
+        defaultAccountId: dto.defaultInventoryAccountId,
         branchId: dto.branchId,
         address: dto.address,
+        city: dto.city,
+        state: dto.state,
+        phone: dto.phone,
+        email: dto.email,
         capacity: dto.capacity,
         capacityUnit: dto.capacityUnit ?? 'TON',
         managerId: dto.managerId,
@@ -126,10 +140,17 @@ export class InventoryService {
         organizationId,
         warehouseId: dto.warehouseId,
         riceVarietyId: dto.riceVarietyId,
+        itemCode: dto.itemCode,
+        itemName: dto.itemName,
         lotNumber: dto.lotNumber,
         batchNumber: dto.batchNumber,
+        serialNo: dto.serialNo,
         quantity: dto.quantity,
+        reservedQty: dto.reservedQty ?? 0,
+        orderedQty: dto.orderedQty ?? 0,
+        projectedQty: dto.projectedQty ?? 0,
         unit: dto.unit ?? 'KG',
+        stockUom: dto.stockUom,
         bagCount: dto.bagCount,
         bagWeight: dto.bagWeight,
         qualityGrade: dto.qualityGrade as
@@ -142,6 +163,7 @@ export class InventoryService {
         moisture: dto.moisture,
         valuationRate,
         totalValue,
+        expiryDate: dto.expiryDate ? new Date(dto.expiryDate) : undefined,
       },
       include: { warehouse: true, riceVariety: true },
     });
@@ -211,14 +233,30 @@ export class InventoryService {
       const movement = await tx.stockMovement.create({
         data: {
           organizationId,
+          namingSeries: dto.namingSeries,
           movementType: dto.movementType,
+          purpose: dto.purpose,
           sourceWarehouseId: dto.sourceWarehouseId,
           destinationWarehouseId: dto.destinationWarehouseId,
           riceVarietyId: dto.riceVarietyId,
           quantity: dto.quantity,
           unit: dto.unit ?? 'KG',
+          basicRate: dto.basicRate ?? 0,
+          basicAmount: (dto.basicRate ?? 0) * dto.quantity,
+          valuationRate: dto.valuationRate ?? 0,
+          totalValue: (dto.valuationRate ?? 0) * dto.quantity,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
+          expenseAccountId: dto.expenseAccountId,
+          batchNo: dto.batchNo,
+          serialNo: dto.serialNo,
+          lotNumber: dto.lotNumber,
+          bagCount: dto.bagCount,
+          bagWeight: dto.bagWeight,
           referenceType: dto.referenceType,
           referenceId: dto.referenceId,
+          referenceName: dto.referenceName,
+          postingTime: dto.postingTime,
           movementDate: new Date(dto.movementDate),
           narration: dto.narration,
           createdBy: userId,
@@ -282,6 +320,63 @@ export class InventoryService {
               },
             });
           }
+        }
+      }
+
+      // Post to Stock Ledger (enterprise accounting engine)
+      if (this.stockLedgerService && dto.riceVarietyId) {
+        try {
+          if (movType === 'IN' && dto.destinationWarehouseId) {
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.destinationWarehouseId,
+              actualQty: dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Movement',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: dto.narration || `Stock IN - ${dto.riceVarietyId}`,
+            });
+          } else if (movType === 'OUT' && dto.sourceWarehouseId) {
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.sourceWarehouseId,
+              actualQty: -dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Movement',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: dto.narration || `Stock OUT - ${dto.riceVarietyId}`,
+            });
+          } else if (movType === 'TRANSFER' && dto.sourceWarehouseId && dto.destinationWarehouseId) {
+            // Transfer = OUT from source + IN to destination
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.sourceWarehouseId,
+              actualQty: -dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Transfer',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: `Transfer OUT to ${dto.destinationWarehouseId}`,
+            });
+            await this.stockLedgerService.createStockLedgerEntry(organizationId, userId, {
+              riceVarietyId: dto.riceVarietyId,
+              warehouseId: dto.destinationWarehouseId,
+              actualQty: dto.quantity,
+              incomingRate: 0,
+              voucherType: 'Stock Transfer',
+              voucherNo: movement.id,
+              voucherId: movement.id,
+              postingDate: new Date(dto.movementDate).toISOString().split('T')[0],
+              remarks: `Transfer IN from ${dto.sourceWarehouseId}`,
+            });
+          }
+        } catch (sleError) {
+          console.warn('Stock ledger entry creation failed:', sleError);
         }
       }
 

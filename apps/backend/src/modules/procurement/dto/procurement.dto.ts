@@ -5,8 +5,12 @@ import {
   IsEnum,
   IsDateString,
   IsNumber,
+  IsBoolean,
   Min,
+  IsArray,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum SupplierTypeEnum {
@@ -39,10 +43,24 @@ export enum QualityGradeEnum {
   REJECT = 'REJECT',
 }
 
+// ============================================================================
+// SUPPLIER DTOs
+// ============================================================================
+
 export class CreateSupplierDto {
   @ApiProperty({ example: 'Haji Muhammad Arif' })
   @IsString()
   name: string;
+
+  @ApiPropertyOptional({ description: 'Unique supplier code' })
+  @IsOptional()
+  @IsString()
+  supplierCode?: string;
+
+  @ApiPropertyOptional({ description: 'Supplier group for categorization' })
+  @IsOptional()
+  @IsString()
+  supplierGroup?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -57,7 +75,17 @@ export class CreateSupplierDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  mobileNo?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   email?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  website?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -67,7 +95,22 @@ export class CreateSupplierDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  addressLine2?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   city?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  state?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -78,6 +121,31 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsString()
   ntn?: string;
+
+  @ApiPropertyOptional({ description: 'Sales tax registration number' })
+  @IsOptional()
+  @IsString()
+  salesTaxNo?: string;
+
+  @ApiPropertyOptional({ description: 'Tax ID' })
+  @IsOptional()
+  @IsString()
+  taxId?: string;
+
+  @ApiPropertyOptional({ description: 'PAN number' })
+  @IsOptional()
+  @IsString()
+  panNo?: string;
+
+  @ApiPropertyOptional({ description: 'Tax withholding category' })
+  @IsOptional()
+  @IsString()
+  taxWithholdingCategory?: string;
+
+  @ApiPropertyOptional({ description: 'Fax number' })
+  @IsOptional()
+  @IsString()
+  fax?: string;
 
   @ApiPropertyOptional({ enum: SupplierTypeEnum })
   @IsOptional()
@@ -93,6 +161,56 @@ export class CreateSupplierDto {
   @IsOptional()
   @IsNumber()
   openingBalance?: number;
+
+  @ApiPropertyOptional({ description: 'Payment terms in days' })
+  @IsOptional()
+  @IsNumber()
+  paymentTermsDays?: number;
+
+  @ApiPropertyOptional({ description: 'Default currency' })
+  @IsOptional()
+  @IsString()
+  defaultCurrency?: string;
+
+  @ApiPropertyOptional({ description: 'Default payable account' })
+  @IsOptional()
+  @IsUUID()
+  defaultPayableAccountId?: string;
+
+  @ApiPropertyOptional({ description: 'Default bank account' })
+  @IsOptional()
+  @IsUUID()
+  defaultBankAccountId?: string;
+
+  @ApiPropertyOptional({ description: 'Default price list' })
+  @IsOptional()
+  @IsUUID()
+  defaultPriceListId?: string;
+
+  @ApiPropertyOptional({ description: 'Is also a transporter' })
+  @IsOptional()
+  @IsBoolean()
+  isTransporter?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is internal supplier (inter-company)' })
+  @IsOptional()
+  @IsBoolean()
+  isInternal?: boolean;
+
+  @ApiPropertyOptional({ description: 'Contact person name' })
+  @IsOptional()
+  @IsString()
+  contactPerson?: string;
+
+  @ApiPropertyOptional({ description: 'Allow creating PI without PO' })
+  @IsOptional()
+  @IsBoolean()
+  allowPurchaseInvoiceCreationWithoutPO?: boolean;
+
+  @ApiPropertyOptional({ description: 'Allow creating PI without receipt' })
+  @IsOptional()
+  @IsBoolean()
+  allowPurchaseInvoiceCreationWithoutReceipt?: boolean;
 }
 
 export class UpdateSupplierDto {
@@ -104,7 +222,17 @@ export class UpdateSupplierDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  supplierGroup?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  mobileNo?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -123,8 +251,33 @@ export class UpdateSupplierDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsNumber()
+  paymentTermsDays?: number;
+
+  @ApiPropertyOptional({ description: 'Put on hold' })
+  @IsOptional()
+  @IsBoolean()
+  onHold?: boolean;
+
+  @ApiPropertyOptional({ description: 'Hold type: ALL, INVOICES, PAYMENTS' })
+  @IsOptional()
+  @IsString()
+  holdType?: string;
+
+  @ApiPropertyOptional({ description: 'Release date for hold' })
+  @IsOptional()
+  @IsDateString()
+  releaseDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
   isActive?: boolean;
 }
+
+// ============================================================================
+// RICE VARIETY (ITEM) DTOs
+// ============================================================================
 
 export class CreateRiceVarietyDto {
   @ApiProperty({ example: 'Super Basmati' })
@@ -143,21 +296,175 @@ export class CreateRiceVarietyDto {
   @IsEnum(RiceCategoryEnum)
   category: RiceCategoryEnum;
 
+  @ApiPropertyOptional({ description: 'Item group for classification' })
+  @IsOptional()
+  @IsString()
+  itemGroup?: string;
+
+  @ApiPropertyOptional({ description: 'Brand name' })
+  @IsOptional()
+  @IsString()
+  brand?: string;
+
+  @ApiPropertyOptional({ description: 'HSN/SAC code for tax classification' })
+  @IsOptional()
+  @IsString()
+  hsnSacCode?: string;
+
+  @ApiPropertyOptional({ description: 'Barcode' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiPropertyOptional({ description: 'Stock UOM (default KG)' })
+  @IsOptional()
+  @IsString()
+  stockUom?: string;
+
+  @ApiPropertyOptional({ description: 'Has variants' })
+  @IsOptional()
+  @IsBoolean()
+  hasVariants?: boolean;
+
+  @ApiPropertyOptional({ description: 'Has serial number tracking' })
+  @IsOptional()
+  @IsBoolean()
+  hasSerialNo?: boolean;
+
+  @ApiPropertyOptional({ description: 'Has batch number tracking' })
+  @IsOptional()
+  @IsBoolean()
+  hasBatchNo?: boolean;
+
+  @ApiPropertyOptional({ description: 'Shelf life in days' })
+  @IsOptional()
+  @IsNumber()
+  shelfLife?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
   defaultMoisture?: number;
 
+  @ApiPropertyOptional({ description: 'Standard selling rate' })
+  @IsOptional()
+  @IsNumber()
+  standardRate?: number;
+
+  @ApiPropertyOptional({ description: 'Valuation rate' })
+  @IsOptional()
+  @IsNumber()
+  valuationRate?: number;
+
+  @ApiPropertyOptional({ description: 'Valuation method: MOVING_AVERAGE or FIFO' })
+  @IsOptional()
+  @IsString()
+  valuationMethod?: string;
+
+  @ApiPropertyOptional({ description: 'Minimum order quantity' })
+  @IsOptional()
+  @IsNumber()
+  minOrderQty?: number;
+
+  @ApiPropertyOptional({ description: 'Safety stock level' })
+  @IsOptional()
+  @IsNumber()
+  safetyStock?: number;
+
+  @ApiPropertyOptional({ description: 'Reorder level' })
+  @IsOptional()
+  @IsNumber()
+  reorderLevel?: number;
+
+  @ApiPropertyOptional({ description: 'Reorder quantity' })
+  @IsOptional()
+  @IsNumber()
+  reorderQty?: number;
+
+  @ApiPropertyOptional({ description: 'Lead time in days' })
+  @IsOptional()
+  @IsNumber()
+  leadTimeDays?: number;
+
+  @ApiPropertyOptional({ description: 'Default warehouse' })
+  @IsOptional()
+  @IsUUID()
+  defaultWarehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Default income account' })
+  @IsOptional()
+  @IsUUID()
+  defaultIncomeAccountId?: string;
+
+  @ApiPropertyOptional({ description: 'Default expense account' })
+  @IsOptional()
+  @IsUUID()
+  defaultExpenseAccountId?: string;
+
+  @ApiPropertyOptional({ description: 'Default cost center' })
+  @IsOptional()
+  @IsUUID()
+  defaultCostCenterId?: string;
+
+  @ApiPropertyOptional({ description: 'Weight per unit' })
+  @IsOptional()
+  @IsNumber()
+  weightPerUnit?: number;
+
+  @ApiPropertyOptional({ description: 'Weight UOM' })
+  @IsOptional()
+  @IsString()
+  weightUom?: string;
+
+  @ApiPropertyOptional({ description: 'Is a sales item' })
+  @IsOptional()
+  @IsBoolean()
+  isSalesItem?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is a purchase item' })
+  @IsOptional()
+  @IsBoolean()
+  isPurchaseItem?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is a stock item' })
+  @IsOptional()
+  @IsBoolean()
+  isStockItem?: boolean;
+
+  @ApiPropertyOptional({ description: 'Opening stock quantity' })
+  @IsOptional()
+  @IsNumber()
+  openingStock?: number;
+
+  @ApiPropertyOptional({ description: 'Opening stock rate' })
+  @IsOptional()
+  @IsNumber()
+  openingStockRate?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   description?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
 }
+
+// ============================================================================
+// PADDY PURCHASE DTOs
+// ============================================================================
 
 export class CreatePaddyPurchaseDto {
   @ApiProperty()
   @IsUUID()
   branchId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  namingSeries?: string;
 
   @ApiProperty({ example: '2024-10-15' })
   @IsDateString()
@@ -176,6 +483,36 @@ export class CreatePaddyPurchaseDto {
   @IsUUID()
   brokerId?: string;
 
+  @ApiPropertyOptional({ description: 'Warehouse for stock receipt' })
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @ApiPropertyOptional({ description: 'Cost center' })
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
+
+  @ApiPropertyOptional({ description: 'Project' })
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional({ description: 'Currency (default PKR)' })
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @ApiPropertyOptional({ description: 'Exchange rate' })
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @ApiPropertyOptional({ description: 'Weighbridge slip reference' })
+  @IsOptional()
+  @IsUUID()
+  weighbridgeSlipId?: string;
+
   @ApiProperty({ example: 10000 })
   @IsNumber()
   @Min(0)
@@ -191,6 +528,16 @@ export class CreatePaddyPurchaseDto {
   @IsNumber()
   moisturePercentage?: number;
 
+  @ApiPropertyOptional({ description: 'Broken rice percentage' })
+  @IsOptional()
+  @IsNumber()
+  brokenPercentage?: number;
+
+  @ApiPropertyOptional({ description: 'Foreign matter percentage' })
+  @IsOptional()
+  @IsNumber()
+  foreignMatter?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsNumber()
@@ -200,6 +547,41 @@ export class CreatePaddyPurchaseDto {
   @IsNumber()
   @Min(0)
   ratePerUnit: number;
+
+  @ApiPropertyOptional({ description: 'Bardana (gunny bag) charges' })
+  @IsOptional()
+  @IsNumber()
+  bardanaAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Labour charges' })
+  @IsOptional()
+  @IsNumber()
+  labourCharges?: number;
+
+  @ApiPropertyOptional({ description: 'Transport charges' })
+  @IsOptional()
+  @IsNumber()
+  transportCharges?: number;
+
+  @ApiPropertyOptional({ description: 'Commission amount for broker' })
+  @IsOptional()
+  @IsNumber()
+  commissionAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Commission rate percentage' })
+  @IsOptional()
+  @IsNumber()
+  commissionRate?: number;
+
+  @ApiPropertyOptional({ description: 'Tax amount' })
+  @IsOptional()
+  @IsNumber()
+  taxAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Withholding tax amount' })
+  @IsOptional()
+  @IsNumber()
+  withholdingTaxAmount?: number;
 
   @ApiPropertyOptional({ enum: QualityGradeEnum })
   @IsOptional()
@@ -211,6 +593,16 @@ export class CreatePaddyPurchaseDto {
   @IsString()
   lotNumber?: string;
 
+  @ApiPropertyOptional({ description: 'Number of bags' })
+  @IsOptional()
+  @IsNumber()
+  bagCount?: number;
+
+  @ApiPropertyOptional({ description: 'Weight per bag' })
+  @IsOptional()
+  @IsNumber()
+  bagWeight?: number;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -219,13 +611,277 @@ export class CreatePaddyPurchaseDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  driverName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  driverPhone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   gatePassNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Amount in words' })
+  @IsOptional()
+  @IsString()
+  inWords?: string;
+
+  @ApiPropertyOptional({ description: 'Terms and conditions' })
+  @IsOptional()
+  @IsString()
+  termsAndConditions?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  remarks?: string;
 }
+
+// ============================================================================
+// PURCHASE ORDER DTOs
+// ============================================================================
+
+export class PurchaseOrderItemDto {
+  @ApiProperty()
+  @IsUUID()
+  riceVarietyId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  itemCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  itemName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: 1000 })
+  @IsNumber()
+  @Min(0.01)
+  quantity: number;
+
+  @ApiPropertyOptional({ default: 'KG' })
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  stockUom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  conversionFactor?: number;
+
+  @ApiProperty({ example: 95 })
+  @IsNumber()
+  @Min(0)
+  rate: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  priceListRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountPercentage?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  taxRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  expenseAccountId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedDeliveryDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  bagCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  bagWeight?: number;
+}
+
+export class CreatePurchaseOrderDto {
+  @ApiProperty()
+  @IsUUID()
+  supplierId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  supplierAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  namingSeries?: string;
+
+  @ApiProperty({ example: '2024-10-20' })
+  @IsDateString()
+  date: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  priceListId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountPercentage?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  applyDiscountOn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  taxTemplateId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  taxesAndCharges?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  taxAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentTerms?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  paymentTermsDays?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  shippingAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  termsAndConditions?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  letterHead?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+
+  @ApiProperty({ type: [PurchaseOrderItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PurchaseOrderItemDto)
+  items: PurchaseOrderItemDto[];
+}
+
+// ============================================================================
+// PURCHASE RATE DTOs
+// ============================================================================
 
 export class CreatePurchaseRateDto {
   @ApiProperty()
@@ -256,6 +912,10 @@ export class CreatePurchaseRateDto {
   @IsNumber()
   maxMoisture?: number;
 }
+
+// ============================================================================
+// QUALITY TEST DTOs
+// ============================================================================
 
 export class CreateQualityTestDto {
   @ApiProperty()
@@ -291,18 +951,28 @@ export class CreateQualityTestDto {
   @IsNumber()
   damagedGrains?: number;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discolouredGrains?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  immatureGrains?: number;
+
   @ApiPropertyOptional({ enum: QualityGradeEnum })
   @IsOptional()
   @IsEnum(QualityGradeEnum)
-  grade?: QualityGradeEnum;
+  overallGrade?: QualityGradeEnum;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  testNotes?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   testedBy?: string;
-
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  notes?: string;
 }

@@ -123,11 +123,22 @@ export class FinanceService {
         code: dto.code,
         name: dto.name,
         accountType: dto.accountType,
+        accountSubType: dto.accountSubType as any,
         balanceType: dto.balanceType,
+        rootType: dto.rootType as any,
+        reportType: dto.reportType as any,
         parentId: dto.parentId,
         isGroup: dto.isGroup ?? false,
+        isFrozen: dto.isFrozen ?? false,
+        currency: dto.accountCurrency ?? 'PKR',
         openingBalance: dto.openingBalance ?? 0,
+        openingDebit: dto.openingDebit ?? 0,
+        openingCredit: dto.openingCredit ?? 0,
         description: dto.description,
+        taxRate: dto.taxRate,
+        allowedPartyTypes: dto.allowedPartyTypes ? dto.allowedPartyTypes.split(',').map(s => s.trim()) : [],
+        mandatoryCostCenter: dto.mandatoryCostCenter ?? false,
+        defaultCostCenterId: dto.defaultCostCenterId,
       },
     });
   }
@@ -183,9 +194,10 @@ export class FinanceService {
     const account = await this.getAccount(organizationId, id);
     if (account.isSystem)
       throw new BadRequestException('Cannot modify system accounts');
+    const { defaultCostCenterId, ...updateData } = dto;
     return this.prisma.chartOfAccount.update({
       where: { id },
-      data: dto,
+      data: updateData as any,
     });
   }
 
@@ -197,332 +209,76 @@ export class FinanceService {
       throw new ConflictException('Chart of accounts already has entries');
 
     const defaults = [
-      {
-        code: '1000',
-        name: 'Assets',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-      },
-      {
-        code: '1100',
-        name: 'Current Assets',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-        parentCode: '1000',
-      },
-      {
-        code: '1110',
-        name: 'Cash in Hand',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1100',
-        isSystem: true,
-      },
-      {
-        code: '1120',
-        name: 'Bank Accounts',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-        parentCode: '1100',
-      },
-      {
-        code: '1130',
-        name: 'Accounts Receivable',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1100',
-        isSystem: true,
-      },
-      {
-        code: '1140',
-        name: 'Inventory',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1100',
-        isSystem: true,
-      },
-      {
-        code: '1150',
-        name: 'Advance to Suppliers',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1100',
-      },
-      {
-        code: '1200',
-        name: 'Fixed Assets',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-        parentCode: '1000',
-      },
-      {
-        code: '1210',
-        name: 'Land & Building',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1200',
-      },
-      {
-        code: '1220',
-        name: 'Plant & Machinery',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1200',
-      },
-      {
-        code: '1230',
-        name: 'Vehicles',
-        accountType: 'ASSET' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '1200',
-      },
-      {
-        code: '2000',
-        name: 'Liabilities',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: true,
-      },
-      {
-        code: '2100',
-        name: 'Current Liabilities',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: true,
-        parentCode: '2000',
-      },
-      {
-        code: '2110',
-        name: 'Accounts Payable',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '2100',
-        isSystem: true,
-      },
-      {
-        code: '2120',
-        name: 'Advance from Customers',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '2100',
-      },
-      {
-        code: '2130',
-        name: 'GST Payable',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '2100',
-        isSystem: true,
-      },
-      {
-        code: '2140',
-        name: 'Salaries Payable',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '2100',
-        isSystem: true,
-      },
-      {
-        code: '2200',
-        name: 'Long Term Liabilities',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: true,
-        parentCode: '2000',
-      },
-      {
-        code: '2210',
-        name: 'Bank Loans',
-        accountType: 'LIABILITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '2200',
-      },
-      {
-        code: '3000',
-        name: 'Equity',
-        accountType: 'EQUITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: true,
-      },
-      {
-        code: '3100',
-        name: 'Owner Capital',
-        accountType: 'EQUITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '3000',
-      },
-      {
-        code: '3200',
-        name: 'Retained Earnings',
-        accountType: 'EQUITY' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '3000',
-        isSystem: true,
-      },
-      {
-        code: '4000',
-        name: 'Revenue',
-        accountType: 'REVENUE' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: true,
-      },
-      {
-        code: '4100',
-        name: 'Sales Revenue',
-        accountType: 'REVENUE' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '4000',
-        isSystem: true,
-      },
-      {
-        code: '4200',
-        name: 'Commission Income',
-        accountType: 'REVENUE' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '4000',
-      },
-      {
-        code: '4300',
-        name: 'Other Income',
-        accountType: 'REVENUE' as const,
-        balanceType: 'CREDIT' as const,
-        isGroup: false,
-        parentCode: '4000',
-      },
-      {
-        code: '5000',
-        name: 'Expenses',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-      },
-      {
-        code: '5100',
-        name: 'Cost of Goods Sold',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-        parentCode: '5000',
-      },
-      {
-        code: '5110',
-        name: 'Paddy Purchase Cost',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5100',
-        isSystem: true,
-      },
-      {
-        code: '5120',
-        name: 'Milling Cost',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5100',
-      },
-      {
-        code: '5130',
-        name: 'Freight & Transport',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5100',
-      },
-      {
-        code: '5200',
-        name: 'Operating Expenses',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: true,
-        parentCode: '5000',
-      },
-      {
-        code: '5210',
-        name: 'Salary Expense',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-        isSystem: true,
-      },
-      {
-        code: '5220',
-        name: 'Rent Expense',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
-      {
-        code: '5230',
-        name: 'Utility Expense',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
-      {
-        code: '5240',
-        name: 'Depreciation',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
-      {
-        code: '5250',
-        name: 'Office Expenses',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
-      {
-        code: '5260',
-        name: 'Commission Expense',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
-      {
-        code: '5270',
-        name: 'Miscellaneous Expense',
-        accountType: 'EXPENSE' as const,
-        balanceType: 'DEBIT' as const,
-        isGroup: false,
-        parentCode: '5200',
-      },
+      // ===== ASSETS (1000) =====
+      { code: '1000', name: 'Assets', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: true, reportType: 'BALANCE_SHEET' as const, rootType: 'ASSET' as const },
+      { code: '1100', name: 'Current Assets', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: true, parentCode: '1000', reportType: 'BALANCE_SHEET' as const },
+      { code: '1110', name: 'Cash in Hand', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', isSystem: true, accountSubType: 'CASH' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1120', name: 'Bank Accounts', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: true, parentCode: '1100', reportType: 'BALANCE_SHEET' as const },
+      { code: '1130', name: 'Accounts Receivable', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', isSystem: true, accountSubType: 'ACCOUNTS_RECEIVABLE' as const, reportType: 'BALANCE_SHEET' as const, allowedPartyTypes: ['CUSTOMER'] },
+      { code: '1140', name: 'Inventory - Raw Materials', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', isSystem: true, accountSubType: 'INVENTORY' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1141', name: 'Inventory - Work In Progress', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', isSystem: true, accountSubType: 'WORK_IN_PROGRESS' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1142', name: 'Inventory - Finished Goods', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', isSystem: true, accountSubType: 'INVENTORY' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1150', name: 'Advance to Suppliers', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', accountSubType: 'ADVANCE_PAID' as const, reportType: 'BALANCE_SHEET' as const, allowedPartyTypes: ['SUPPLIER'] },
+      { code: '1160', name: 'Tax Receivable (Input GST)', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1100', accountSubType: 'TAX_RECEIVABLE' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1200', name: 'Fixed Assets', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: true, parentCode: '1000', reportType: 'BALANCE_SHEET' as const },
+      { code: '1210', name: 'Land & Building', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1200', accountSubType: 'FIXED_ASSET' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1220', name: 'Plant & Machinery', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1200', accountSubType: 'FIXED_ASSET' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1230', name: 'Vehicles', accountType: 'ASSET' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '1200', accountSubType: 'FIXED_ASSET' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '1240', name: 'Accumulated Depreciation', accountType: 'ASSET' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '1200', accountSubType: 'ACCUMULATED_DEPRECIATION' as const, reportType: 'BALANCE_SHEET' as const },
+      // ===== LIABILITIES (2000) =====
+      { code: '2000', name: 'Liabilities', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: true, reportType: 'BALANCE_SHEET' as const, rootType: 'LIABILITY' as const },
+      { code: '2100', name: 'Current Liabilities', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: true, parentCode: '2000', reportType: 'BALANCE_SHEET' as const },
+      { code: '2110', name: 'Accounts Payable', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2100', isSystem: true, accountSubType: 'ACCOUNTS_PAYABLE' as const, reportType: 'BALANCE_SHEET' as const, allowedPartyTypes: ['SUPPLIER'] },
+      { code: '2120', name: 'Advance from Customers', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2100', accountSubType: 'ADVANCE_RECEIVED' as const, reportType: 'BALANCE_SHEET' as const, allowedPartyTypes: ['CUSTOMER'] },
+      { code: '2130', name: 'GST Payable (Output GST)', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2100', isSystem: true, accountSubType: 'TAX_PAYABLE' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '2140', name: 'Salaries Payable', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2100', isSystem: true, reportType: 'BALANCE_SHEET' as const, allowedPartyTypes: ['EMPLOYEE'] },
+      { code: '2150', name: 'WHT Payable', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2100', accountSubType: 'TAX_PAYABLE' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '2200', name: 'Long Term Liabilities', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: true, parentCode: '2000', reportType: 'BALANCE_SHEET' as const },
+      { code: '2210', name: 'Bank Loans', accountType: 'LIABILITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '2200', reportType: 'BALANCE_SHEET' as const },
+      // ===== EQUITY (3000) =====
+      { code: '3000', name: 'Equity', accountType: 'EQUITY' as const, balanceType: 'CREDIT' as const, isGroup: true, reportType: 'BALANCE_SHEET' as const, rootType: 'EQUITY' as const },
+      { code: '3100', name: 'Owner Capital', accountType: 'EQUITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '3000', accountSubType: 'CAPITAL' as const, reportType: 'BALANCE_SHEET' as const },
+      { code: '3200', name: 'Retained Earnings', accountType: 'EQUITY' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '3000', isSystem: true, accountSubType: 'RETAINED_EARNINGS' as const, reportType: 'BALANCE_SHEET' as const },
+      // ===== REVENUE (4000) =====
+      { code: '4000', name: 'Revenue', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: true, reportType: 'PROFIT_AND_LOSS' as const, rootType: 'REVENUE' as const },
+      { code: '4100', name: 'Sales Revenue', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '4000', isSystem: true, accountSubType: 'SALES_REVENUE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '4200', name: 'Commission Income', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '4000', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '4300', name: 'Other Income', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '4000', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '4400', name: 'Interest Income', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '4000', accountSubType: 'INTEREST_INCOME' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '4500', name: 'Discount Received', accountType: 'REVENUE' as const, balanceType: 'CREDIT' as const, isGroup: false, parentCode: '4000', accountSubType: 'DISCOUNT_RECEIVED' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      // ===== EXPENSES (5000) =====
+      { code: '5000', name: 'Expenses', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: true, reportType: 'PROFIT_AND_LOSS' as const, rootType: 'EXPENSE' as const },
+      { code: '5100', name: 'Cost of Goods Sold', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: true, parentCode: '5000', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5110', name: 'Paddy Purchase Cost', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5100', isSystem: true, accountSubType: 'COST_OF_GOODS_SOLD' as const, reportType: 'PROFIT_AND_LOSS' as const, mandatoryCostCenter: true },
+      { code: '5120', name: 'Milling Cost', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5100', accountSubType: 'COST_OF_GOODS_SOLD' as const, reportType: 'PROFIT_AND_LOSS' as const, mandatoryCostCenter: true },
+      { code: '5130', name: 'Freight & Transport', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5100', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5140', name: 'Stock Adjustment', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5100', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5200', name: 'Operating Expenses', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: true, parentCode: '5000', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5210', name: 'Salary Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', isSystem: true, accountSubType: 'OPERATING_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5220', name: 'Rent Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'OPERATING_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5230', name: 'Utility Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'OPERATING_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5240', name: 'Depreciation', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'DEPRECIATION_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5250', name: 'Office Expenses', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'OPERATING_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5260', name: 'Commission Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5270', name: 'Miscellaneous Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5280', name: 'Interest Expense', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'INTEREST_EXPENSE' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5290', name: 'Discount Allowed', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5200', accountSubType: 'DISCOUNT_ALLOWED' as const, reportType: 'PROFIT_AND_LOSS' as const },
+      { code: '5300', name: 'Exchange Loss', accountType: 'EXPENSE' as const, balanceType: 'DEBIT' as const, isGroup: false, parentCode: '5000', reportType: 'PROFIT_AND_LOSS' as const },
     ];
 
     return this.prisma.$transaction(async (tx) => {
       const codeToId = new Map<string, string>();
+      let level = 0;
+      let lftCounter = 1;
 
       for (const acc of defaults) {
-        const parentId = acc.parentCode
-          ? codeToId.get(acc.parentCode)
+        const parentId = (acc as any).parentCode
+          ? codeToId.get((acc as any).parentCode)
           : undefined;
+
+        // Calculate nested set level
+        level = (acc as any).parentCode ? ((acc as any).parentCode.length === 4 ? 1 : 2) : 0;
+
         const created = await tx.chartOfAccount.create({
           data: {
             organizationId,
@@ -531,8 +287,16 @@ export class FinanceService {
             accountType: acc.accountType,
             balanceType: acc.balanceType,
             isGroup: acc.isGroup,
-            isSystem: acc.isSystem ?? false,
+            isSystem: (acc as any).isSystem ?? false,
             parentId: parentId ?? null,
+            accountSubType: (acc as any).accountSubType ?? null,
+            reportType: (acc as any).reportType ?? null,
+            rootType: (acc as any).rootType ?? null,
+            allowedPartyTypes: (acc as any).allowedPartyTypes ?? [],
+            mandatoryCostCenter: (acc as any).mandatoryCostCenter ?? false,
+            level,
+            lft: lftCounter++,
+            rgt: lftCounter++,
           },
         });
         codeToId.set(acc.code, created.id);
@@ -598,6 +362,9 @@ export class FinanceService {
     return this.prisma.$transaction(async (tx) => {
       const entryNumber = await this.generateEntryNumber(tx, organizationId);
 
+      const totalDebit = dto.lines.reduce((sum, l) => sum + (l.debit || 0), 0);
+      const totalCredit = dto.lines.reduce((sum, l) => sum + (l.credit || 0), 0);
+
       const entry = await tx.journalEntry.create({
         data: {
           organizationId,
@@ -605,16 +372,36 @@ export class FinanceService {
           date: new Date(dto.date),
           reference: dto.reference,
           narration: dto.narration,
-          entryType: dto.entryType ?? 'MANUAL',
+          entryType: (dto.entryType ?? 'MANUAL') as any,
           fiscalYearId: dto.fiscalYearId,
           createdBy: userId,
+          chequeNo: dto.chequeNo,
+          chequeDate: dto.chequeDate ? new Date(dto.chequeDate) : undefined,
+          userRemark: dto.userRemark,
+          isMultiCurrency: dto.multiCurrency ?? false,
+          totalDebit,
+          totalCredit,
+          difference: totalDebit - totalCredit,
           lines: {
-            create: dto.lines.map((line) => ({
+            create: dto.lines.map((line, idx) => ({
               accountId: line.accountId,
               debit: line.debit,
               credit: line.credit,
               narration: line.narration,
-              costCenter: line.costCenter,
+              costCenterId: line.costCenterId,
+              projectId: line.projectId,
+              partyType: line.partyType,
+              partyId: line.partyId,
+              partyName: line.partyName,
+              againstAccount: line.againstAccount,
+              isAdvance: line.isAdvance ?? false,
+              referenceType: line.referenceType,
+              referenceId: line.referenceId,
+              referenceName: line.referenceName,
+              accountCurrency: line.accountCurrency ?? 'PKR',
+              exchangeRate: line.exchangeRate ?? 1,
+              debitInAccountCurrency: line.debitInAccountCurrency ?? line.debit,
+              creditInAccountCurrency: line.creditInAccountCurrency ?? line.credit,
             })),
           },
         },
@@ -668,7 +455,7 @@ export class FinanceService {
       };
     }
     if (filter.fiscalYearId) where.fiscalYearId = filter.fiscalYearId;
-    if (filter.entryType) where.entryType = filter.entryType;
+    if (filter.entryType) where.entryType = filter.entryType as any;
     if (filter.isPosted !== undefined) where.isPosted = filter.isPosted;
 
     const [data, total] = await Promise.all([
@@ -1040,9 +827,16 @@ export class FinanceService {
         bankName: dto.bankName,
         accountNumber: dto.accountNumber,
         branchCode: dto.branchCode,
+        branchName: dto.branchName,
         iban: dto.iban,
+        swiftCode: dto.swiftCode,
+        bankGuarantee: dto.bankGuaranteeLimit ? true : false,
+        bankGuaranteeAmount: dto.bankGuaranteeLimit ?? 0,
+        currency: dto.accountCurrency ?? 'PKR',
+        lastIntegrationDate: dto.lastIntegrationDate ? new Date(dto.lastIntegrationDate) : undefined,
         accountId: dto.accountId,
         openingBalance: dto.openingBalance ?? 0,
+        isDefault: dto.isDefault ?? false,
       },
     });
   }
@@ -1142,7 +936,7 @@ export class FinanceService {
           partyType: dto.partyType,
           partyId: dto.partyId,
           amount: dto.amount,
-          paymentMode: dto.paymentMode,
+          paymentMode: dto.paymentMode as any,
           bankAccountId: dto.bankAccountId,
           chequeNumber: dto.chequeNumber,
           reference: dto.reference,
@@ -1248,7 +1042,7 @@ export class FinanceService {
           partyType: dto.partyType,
           partyId: dto.partyId,
           amount: dto.amount,
-          paymentMode: dto.paymentMode,
+          paymentMode: dto.paymentMode as any,
           bankAccountId: dto.bankAccountId,
           chequeNumber: dto.chequeNumber,
           reference: dto.reference,
@@ -2079,7 +1873,7 @@ export class FinanceService {
               debit: line.credit,
               credit: line.debit,
               narration: `Reversal: ${line.narration ?? ''}`,
-              costCenter: line.costCenter ?? undefined,
+              costCenterId: line.costCenterId ?? undefined,
             })),
           },
         },

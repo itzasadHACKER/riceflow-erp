@@ -21,17 +21,49 @@ enum SubscriptionTier {
 model Organization {
   id               String           @id @default(uuid()) @db.Uuid
   name             String
+  abbr             String?          // Company abbreviation (ERPNext: abbr)
   slug             String           @unique
   logoUrl          String?          @map("logo_url")
   address          String?
+  addressLine2     String?          @map("address_line_2")
   city             String?
   state            String?
+  postalCode       String?          @map("postal_code")
   country          String?          @default("Pakistan")
   phone            String?
+  fax              String?
   email            String?
   website          String?
-  taxId            String?          @map("tax_id")
+  taxId            String?          @map("tax_id")  // NTN
+  salesTaxNo       String?          @map("sales_tax_no")  // STRN
   registrationNo   String?          @map("registration_no")
+  industry         String?          // ERPNext: industry
+  dateOfEstablishment DateTime?     @map("date_of_establishment") @db.Date
+  defaultCurrency  String           @default("PKR") @map("default_currency")
+  defaultPaymentTermsDays Int       @default(30) @map("default_payment_terms_days")
+  defaultCreditDays Int             @default(30) @map("default_credit_days")
+  defaultBuyingPriceListId  String?  @map("default_buying_price_list_id") @db.Uuid
+  defaultSellingPriceListId String?  @map("default_selling_price_list_id") @db.Uuid
+  defaultWarehouseId        String?  @map("default_warehouse_id") @db.Uuid
+  defaultCostCenterId       String?  @map("default_cost_center_id") @db.Uuid
+  defaultIncomeAccountId    String?  @map("default_income_account_id") @db.Uuid
+  defaultExpenseAccountId   String?  @map("default_expense_account_id") @db.Uuid
+  defaultPayableAccountId   String?  @map("default_payable_account_id") @db.Uuid
+  defaultReceivableAccountId String? @map("default_receivable_account_id") @db.Uuid
+  defaultBankAccountId      String?  @map("default_bank_account_id") @db.Uuid
+  defaultCashAccountId      String?  @map("default_cash_account_id") @db.Uuid
+  roundOffAccountId         String?  @map("round_off_account_id") @db.Uuid
+  writeOffAccountId         String?  @map("write_off_account_id") @db.Uuid
+  exchangeGainLossAccountId String?  @map("exchange_gain_loss_account_id") @db.Uuid
+  stockReceivedNotBilledId  String?  @map("stock_received_not_billed_id") @db.Uuid
+  stockAdjustmentAccountId  String?  @map("stock_adjustment_account_id") @db.Uuid
+  defaultInventoryAccountId String?  @map("default_inventory_account_id") @db.Uuid
+  cogsAccountId             String?  @map("cogs_account_id") @db.Uuid
+  roundOffCostCenterId      String?  @map("round_off_cost_center_id") @db.Uuid
+  enablePerpetualInventory  Boolean  @default(true) @map("enable_perpetual_inventory")
+  valuationMethod           String   @default("MOVING_AVERAGE") @map("valuation_method")
+  autoAccountingForStockEntry Boolean @default(true) @map("auto_accounting_for_stock_entry")
+  enableAutoJournalEntry    Boolean  @default(true) @map("enable_auto_journal_entry")
   subscriptionTier SubscriptionTier @default(FREE) @map("subscription_tier")
   settings         Json?            @default("{}")
   isActive         Boolean          @default(true) @map("is_active")
@@ -181,6 +213,11 @@ model Organization {
   weighbridgeSlips   WeighbridgeSlip[]
   bardanaTransactions BardanaTransaction[]
   purchaseInvoices   PurchaseInvoice[]
+  generalLedgerEntries GeneralLedgerEntry[]
+  stockLedgerEntries StockLedgerEntry[]
+  paymentEntries     PaymentEntry[]
+  taxTemplates       TaxTemplate[]
+  accountingPeriods  AccountingPeriod[]
 
   @@map("organizations")
 }
@@ -393,18 +430,49 @@ model Employee {
   employeeCode    String         @map("employee_code")
   firstName       String         @map("first_name")
   lastName        String         @map("last_name")
+  middleName      String?        @map("middle_name")
+  fullName        String?        @map("full_name")
+  gender          String?
+  dateOfBirth     DateTime?      @map("date_of_birth") @db.Date
+  maritalStatus   String?        @map("marital_status")
+  bloodGroup      String?        @map("blood_group")
   phone           String?
+  mobileNo        String?        @map("mobile_no")
+  personalEmail   String?        @map("personal_email")
+  companyEmail    String?        @map("company_email")
   email           String?
   cnic            String?
+  passportNo      String?        @map("passport_no")
   designation     String?
+  reportsTo       String?        @map("reports_to") @db.Uuid
   employmentType  EmploymentType @default(FULL_TIME) @map("employment_type")
+  status          String         @default("Active")
   joinDate        DateTime       @map("join_date") @db.Date
+  confirmationDate DateTime?     @map("confirmation_date") @db.Date
+  contractEndDate DateTime?      @map("contract_end_date") @db.Date
   exitDate        DateTime?      @map("exit_date") @db.Date
+  relievingDate   DateTime?      @map("relieving_date") @db.Date
+  reasonForLeaving String?       @map("reason_for_leaving")
+  grade           String?
+  payrollCostCenterId String?    @map("payroll_cost_center_id") @db.Uuid
   baseSalary      Decimal        @default(0) @map("base_salary") @db.Decimal(18, 4)
+  ctc             Decimal        @default(0) @db.Decimal(18, 4)
+  salaryMode      String?        @map("salary_mode")
   bankAccount     String?        @map("bank_account")
   bankName        String?        @map("bank_name")
+  iban            String?
   address         String?
+  currentAddress  String?        @map("current_address")
+  permanentAddress String?       @map("permanent_address")
   emergencyContact String?       @map("emergency_contact")
+  emergencyContactName String?   @map("emergency_contact_name")
+  emergencyPhone  String?        @map("emergency_phone")
+  healthInsurance String?        @map("health_insurance")
+  healthInsuranceNo String?      @map("health_insurance_no")
+  defaultShift    String?        @map("default_shift")
+  attendanceDeviceId String?     @map("attendance_device_id")
+  holidayList     String?        @map("holiday_list")
+  imageUrl        String?        @map("image_url")
   isActive        Boolean        @default(true) @map("is_active")
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -485,14 +553,43 @@ model LeaveRequest {
 model SalarySlip {
   id             String           @id @default(uuid()) @db.Uuid
   employeeId     String           @map("employee_id") @db.Uuid
+  namingSeries   String?          @map("naming_series")
   month          Int
   year           Int
+  startDate      DateTime?        @map("start_date") @db.Date
+  endDate        DateTime?        @map("end_date") @db.Date
+  postingDate    DateTime?        @map("posting_date") @db.Date
+  salaryStructure String?         @map("salary_structure")
+  branchId       String?          @map("branch_id") @db.Uuid
+  departmentId   String?          @map("department_id") @db.Uuid
+  designation    String?
+  payrollFrequency String?        @map("payroll_frequency")
+  currency       String           @default("PKR")
+  exchangeRate   Decimal          @default(1) @map("exchange_rate") @db.Decimal(18, 6)
   baseSalary     Decimal          @map("base_salary") @db.Decimal(18, 4)
-  allowances     Json?            @default("{}") 
-  deductions     Json?            @default("{}")
+  hourRate       Decimal          @default(0) @map("hour_rate") @db.Decimal(18, 4)
+  totalWorkingDays Decimal        @default(0) @map("total_working_days") @db.Decimal(5, 1)
+  absentDays     Decimal          @default(0) @map("absent_days") @db.Decimal(5, 1)
+  paymentDays    Decimal          @default(0) @map("payment_days") @db.Decimal(5, 1)
+  leaveWithoutPay Decimal         @default(0) @map("leave_without_pay") @db.Decimal(5, 1)
+  earnings       Json?            @default("[]")
+  deductions     Json?            @default("[]")
+  allowances     Json?            @default("{}")
+  overtimeHours  Decimal          @default(0) @map("overtime_hours") @db.Decimal(8, 2)
   overtimeAmount Decimal          @default(0) @map("overtime_amount") @db.Decimal(18, 4)
+  loanRepayment  Decimal          @default(0) @map("loan_repayment") @db.Decimal(18, 4)
+  totalEarnings  Decimal          @default(0) @map("total_earnings") @db.Decimal(18, 4)
+  totalDeductions Decimal         @default(0) @map("total_deductions") @db.Decimal(18, 4)
   grossSalary    Decimal          @default(0) @map("gross_salary") @db.Decimal(18, 4)
   netSalary      Decimal          @default(0) @map("net_salary") @db.Decimal(18, 4)
+  roundedTotal   Decimal          @default(0) @map("rounded_total") @db.Decimal(18, 4)
+  modeOfPayment  String?          @map("mode_of_payment")
+  bankName       String?          @map("bank_name")
+  bankAccountNo  String?          @map("bank_account_no")
+  costCenterId   String?          @map("cost_center_id") @db.Uuid
+  projectId      String?          @map("project_id") @db.Uuid
+  payrollEntryId String?          @map("payroll_entry_id") @db.Uuid
+  docStatus      Int              @default(0) @map("doc_status")
   status         SalarySlipStatus @default(DRAFT)
   paidAt         DateTime?        @map("paid_at")
   journalEntryId String?          @map("journal_entry_id") @db.Uuid
@@ -537,6 +634,52 @@ enum AccountType {
   EXPENSE
 }
 
+enum AccountSubType {
+  CASH
+  BANK
+  ACCOUNTS_RECEIVABLE
+  ACCOUNTS_PAYABLE
+  INVENTORY
+  FIXED_ASSET
+  ACCUMULATED_DEPRECIATION
+  CAPITAL
+  RETAINED_EARNINGS
+  SALES_REVENUE
+  COST_OF_GOODS_SOLD
+  OPERATING_EXPENSE
+  TAX_PAYABLE
+  TAX_RECEIVABLE
+  ADVANCE_RECEIVED
+  ADVANCE_PAID
+  WORK_IN_PROGRESS
+  DEPRECIATION_EXPENSE
+  INTEREST_INCOME
+  INTEREST_EXPENSE
+  DISCOUNT_ALLOWED
+  DISCOUNT_RECEIVED
+  OTHER
+}
+
+enum ReportType {
+  BALANCE_SHEET
+  PROFIT_AND_LOSS
+}
+
+enum DocumentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SUBMITTED
+  CANCELLED
+  AMENDED
+}
+
+enum PartyType {
+  CUSTOMER
+  SUPPLIER
+  EMPLOYEE
+  SHAREHOLDER
+}
+
 enum BalanceType {
   DEBIT
   CREDIT
@@ -557,6 +700,16 @@ enum JournalEntryType {
   SALARY
   RECEIPT
   PAYMENT
+  WRITE_OFF
+  EXCHANGE_GAIN_LOSS
+  DEFERRED_REVENUE
+  DEFERRED_EXPENSE
+  INTER_COMPANY
+  BANK_ENTRY
+  CASH_ENTRY
+  CREDIT_CARD_ENTRY
+  CONTRA_ENTRY
+  EXCISE_ENTRY
 }
 
 enum PaymentMode {
@@ -583,10 +736,13 @@ model FiscalYear {
   id             String   @id @default(uuid()) @db.Uuid
   organizationId String   @map("organization_id") @db.Uuid
   name           String
+  yearStartDate  DateTime? @map("year_start_date") @db.Date
+  yearEndDate    DateTime? @map("year_end_date") @db.Date
   startDate      DateTime @map("start_date") @db.Date
   endDate        DateTime @map("end_date") @db.Date
   isActive       Boolean  @default(true) @map("is_active")
   isClosed       Boolean  @default(false) @map("is_closed")
+  autoCreated    Boolean  @default(false) @map("auto_created")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
@@ -594,30 +750,49 @@ model FiscalYear {
   journalEntries JournalEntry[]
   budgets        Budget[]
 
+  @@unique([organizationId, name])
   @@index([organizationId])
   @@map("fiscal_years")
 }
 
 model ChartOfAccount {
-  id             String      @id @default(uuid()) @db.Uuid
-  organizationId String      @map("organization_id") @db.Uuid
-  code           String
-  name           String
-  accountType    AccountType @map("account_type")
-  parentId       String?     @map("parent_id") @db.Uuid
-  isGroup        Boolean     @default(false) @map("is_group")
-  isSystem       Boolean     @default(false) @map("is_system")
-  balanceType    BalanceType @map("balance_type")
-  openingBalance Decimal     @default(0) @map("opening_balance") @db.Decimal(18, 4)
-  description    String?
-  isActive       Boolean     @default(true) @map("is_active")
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  code             String
+  name             String
+  accountType      AccountType     @map("account_type")
+  accountSubType   AccountSubType? @map("account_sub_type")
+  reportType       ReportType?     @map("report_type")
+  rootType         AccountType?    @map("root_type")
+  parentId         String?         @map("parent_id") @db.Uuid
+  isGroup          Boolean         @default(false) @map("is_group")
+  isSystem         Boolean         @default(false) @map("is_system")
+  isFrozen         Boolean         @default(false) @map("is_frozen")
+  balanceType      BalanceType     @map("balance_type")
+  currency         String          @default("PKR")
+  openingBalance   Decimal         @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  openingDebit     Decimal         @default(0) @map("opening_debit") @db.Decimal(18, 4)
+  openingCredit    Decimal         @default(0) @map("opening_credit") @db.Decimal(18, 4)
+  closingBalance   Decimal         @default(0) @map("closing_balance") @db.Decimal(18, 4)
+  description      String?
+  taxRate          Decimal?        @map("tax_rate") @db.Decimal(5, 2)
+  interCompany     Boolean         @default(false) @map("inter_company")
+  allowedPartyTypes String[]       @map("allowed_party_types")
+  mandatoryCostCenter Boolean      @default(false) @map("mandatory_cost_center")
+  defaultCostCenterId String?      @map("default_cost_center_id") @db.Uuid
+  level            Int             @default(0)
+  lft              Int             @default(0)
+  rgt              Int             @default(0)
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
-  organization      Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  parent            ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children          ChartOfAccount[]   @relation("AccountHierarchy")
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  parent            ChartOfAccount?      @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children          ChartOfAccount[]     @relation("AccountHierarchy")
+  defaultCostCenter CostCenter?          @relation("DefaultCostCenter", fields: [defaultCostCenterId], references: [id])
   journalEntryLines JournalEntryLine[]
+  glEntries         GeneralLedgerEntry[]
   bankAccounts      BankAccount[]
   taxConfigurations TaxConfiguration[]
   budgetLines       BudgetLine[]
@@ -625,29 +800,53 @@ model ChartOfAccount {
   @@unique([organizationId, code])
   @@index([organizationId])
   @@index([parentId])
+  @@index([organizationId, accountType])
+  @@index([organizationId, isGroup])
+  @@index([organizationId, accountSubType])
   @@map("chart_of_accounts")
 }
 
 model JournalEntry {
-  id             String           @id @default(uuid()) @db.Uuid
-  organizationId String           @map("organization_id") @db.Uuid
-  entryNumber    String           @map("entry_number")
-  date           DateTime         @db.Date
-  reference      String?
-  narration      String?
-  entryType      JournalEntryType @default(MANUAL) @map("entry_type")
-  fiscalYearId   String           @map("fiscal_year_id") @db.Uuid
-  isPosted       Boolean          @default(false) @map("is_posted")
-  postedBy       String?          @map("posted_by") @db.Uuid
-  postedAt       DateTime?        @map("posted_at")
-  createdBy      String?          @map("created_by") @db.Uuid
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-  deletedAt      DateTime?        @map("deleted_at")
+  id               String           @id @default(uuid()) @db.Uuid
+  organizationId   String           @map("organization_id") @db.Uuid
+  entryNumber      String           @map("entry_number")
+  date             DateTime         @db.Date
+  reference        String?
+  narration        String?
+  entryType        JournalEntryType @default(MANUAL) @map("entry_type")
+  fiscalYearId     String           @map("fiscal_year_id") @db.Uuid
+  docStatus        Int              @default(0) @map("doc_status")
+  isPosted         Boolean          @default(false) @map("is_posted")
+  postedBy         String?          @map("posted_by") @db.Uuid
+  postedAt         DateTime?        @map("posted_at")
+  voucherType      String?          @map("voucher_type")
+  voucherNo        String?          @map("voucher_no")
+  isReversed       Boolean          @default(false) @map("is_reversed")
+  reversedById     String?          @map("reversed_by_id") @db.Uuid
+  reversalOfId     String?          @map("reversal_of_id") @db.Uuid
+  isMultiCurrency  Boolean          @default(false) @map("is_multi_currency")
+  payTo            String?          @map("pay_to")
+  totalDebit       Decimal          @default(0) @map("total_debit") @db.Decimal(18, 4)
+  totalCredit      Decimal          @default(0) @map("total_credit") @db.Decimal(18, 4)
+  difference       Decimal          @default(0) @db.Decimal(18, 4)
+  chequeNo         String?          @map("cheque_no")
+  chequeDate       DateTime?        @map("cheque_date") @db.Date
+  userRemark       String?          @map("user_remark") @db.Text
+  submittedBy      String?          @map("submitted_by") @db.Uuid
+  submittedAt      DateTime?        @map("submitted_at")
+  cancelledBy      String?          @map("cancelled_by") @db.Uuid
+  cancelledAt      DateTime?        @map("cancelled_at")
+  cancellationReason String?        @map("cancellation_reason")
+  amendedFromId    String?          @map("amended_from_id") @db.Uuid
+  createdBy        String?          @map("created_by") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  deletedAt        DateTime?        @map("deleted_at")
 
   organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   fiscalYear         FiscalYear           @relation(fields: [fiscalYearId], references: [id])
   lines              JournalEntryLine[]
+  glEntries          GeneralLedgerEntry[]
   salarySlips        SalarySlip[]
   paymentVouchers    PaymentVoucher[]
   receiptVouchers    ReceiptVoucher[]
@@ -664,25 +863,44 @@ model JournalEntry {
   @@unique([organizationId, entryNumber])
   @@index([organizationId, date])
   @@index([fiscalYearId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([organizationId, docStatus])
   @@map("journal_entries")
 }
 
 model JournalEntryLine {
-  id             String  @id @default(uuid()) @db.Uuid
-  journalEntryId String  @map("journal_entry_id") @db.Uuid
-  accountId      String  @map("account_id") @db.Uuid
-  debit          Decimal @default(0) @db.Decimal(18, 4)
-  credit         Decimal @default(0) @db.Decimal(18, 4)
-  narration      String?
-  costCenter     String? @map("cost_center")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                String   @id @default(uuid()) @db.Uuid
+  journalEntryId    String   @map("journal_entry_id") @db.Uuid
+  accountId         String   @map("account_id") @db.Uuid
+  debit             Decimal  @default(0) @db.Decimal(18, 4)
+  credit            Decimal  @default(0) @db.Decimal(18, 4)
+  narration         String?
+  partyType         String?  @map("party_type")
+  partyId           String?  @map("party_id") @db.Uuid
+  partyName         String?  @map("party_name")
+  costCenterId      String?  @map("cost_center_id") @db.Uuid
+  projectId         String?  @map("project_id") @db.Uuid
+  againstAccount    String?  @map("against_account")
+  referenceType     String?  @map("reference_type")
+  referenceId       String?  @map("reference_id") @db.Uuid
+  referenceName     String?  @map("reference_name")
+  isAdvance         Boolean  @default(false) @map("is_advance")
+  accountCurrency   String   @default("PKR") @map("account_currency")
+  exchangeRate      Decimal  @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  debitInAccountCurrency  Decimal @default(0) @map("debit_in_account_currency") @db.Decimal(18, 4)
+  creditInAccountCurrency Decimal @default(0) @map("credit_in_account_currency") @db.Decimal(18, 4)
+  createdAt         DateTime @default(now()) @map("created_at")
 
   journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account      ChartOfAccount @relation(fields: [accountId], references: [id])
+  costCenter   CostCenter?    @relation("JELineCostCenter", fields: [costCenterId], references: [id])
+  project      Project?       @relation("JELineProject", fields: [projectId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
   @@index([accountId, journalEntryId])
+  @@index([partyType, partyId])
+  @@index([costCenterId])
   @@map("journal_entry_lines")
 }
 
@@ -692,10 +910,19 @@ model BankAccount {
   accountName    String  @map("account_name")
   bankName       String  @map("bank_name")
   accountNumber  String  @map("account_number")
+  branchName     String? @map("branch_name")
   branchCode     String? @map("branch_code")
+  bankAddress    String? @map("bank_address")
+  city           String?
   iban           String?
+  swiftCode      String? @map("swift_code")
+  bankGuarantee  Boolean @default(false) @map("bank_guarantee")
+  bankGuaranteeAmount Decimal @default(0) @map("bank_guarantee_amount") @db.Decimal(18, 4)
   accountId      String  @map("account_id") @db.Uuid
+  currency       String  @default("PKR")
+  lastIntegrationDate DateTime? @map("last_integration_date") @db.Date
   openingBalance Decimal @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  isDefault      Boolean @default(false) @map("is_default")
   isActive       Boolean @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -843,23 +1070,49 @@ enum QualityGrade {
 }
 
 model Supplier {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  name           String
-  company        String?
-  phone          String?
-  email          String?
-  address        String?
-  city           String?
-  cnic           String?
-  ntn            String?
-  supplierType   SupplierType @default(FARMER) @map("supplier_type")
-  creditLimit    Decimal      @default(0) @map("credit_limit") @db.Decimal(18, 4)
-  openingBalance Decimal      @default(0) @map("opening_balance") @db.Decimal(18, 4)
-  isActive       Boolean      @default(true) @map("is_active")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  supplierCode      String?      @map("supplier_code")
+  name              String
+  company           String?
+  supplierGroup     String?      @map("supplier_group")  // ERPNext: supplier_group
+  phone             String?
+  mobileNo          String?      @map("mobile_no")
+  email             String?
+  website           String?
+  address           String?
+  addressLine2      String?      @map("address_line_2")
+  city              String?
+  state             String?
+  postalCode        String?      @map("postal_code")
+  country           String?      @default("Pakistan")
+  cnic              String?
+  ntn               String?
+  salesTaxNo        String?      @map("sales_tax_no")
+  fax               String?
+  supplierType      SupplierType @default(FARMER) @map("supplier_type")
+  paymentTermsDays  Int?         @map("payment_terms_days")
+  creditLimit       Decimal      @default(0) @map("credit_limit") @db.Decimal(18, 4)
+  openingBalance    Decimal      @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  defaultCurrency   String       @default("PKR") @map("default_currency")
+  defaultBankAccountId String?   @map("default_bank_account_id") @db.Uuid
+  defaultPayableAccountId String? @map("default_payable_account_id") @db.Uuid
+  defaultPriceListId String?     @map("default_price_list_id") @db.Uuid
+  taxWithholdingCategory String? @map("tax_withholding_category")
+  taxId             String?      @map("tax_id")
+  panNo             String?      @map("pan_no")
+  isTransporter     Boolean      @default(false) @map("is_transporter")
+  isInternal        Boolean      @default(false) @map("is_internal")
+  onHold            Boolean      @default(false) @map("on_hold")
+  holdType          String?      @map("hold_type")  // ALL, INVOICES, PAYMENTS
+  releaseDate       DateTime?    @map("release_date") @db.Date
+  allowPurchaseInvoiceCreationWithoutPO Boolean @default(false) @map("allow_pi_without_po")
+  allowPurchaseInvoiceCreationWithoutReceipt Boolean @default(false) @map("allow_pi_without_receipt")
+  contactPerson     String?      @map("contact_person")
+  isActive          Boolean      @default(true) @map("is_active")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  deletedAt         DateTime?    @map("deleted_at")
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   paddyPurchases   PaddyPurchase[]
@@ -870,7 +1123,9 @@ model Supplier {
   purchaseQuotations PurchaseQuotation[]
   purchaseInvoices   PurchaseInvoice[]
 
+  @@unique([organizationId, supplierCode])
   @@index([organizationId])
+  @@index([organizationId, supplierType])
   @@map("suppliers")
 }
 
@@ -881,8 +1136,46 @@ model RiceVariety {
   code            String
   riceType        RiceType     @map("rice_type")
   category        RiceCategory
+  itemGroup       String?      @map("item_group")  // ERPNext: item_group
+  brand           String?
+  hsnSacCode      String?      @map("hsn_sac_code")  // Tax classification
+  barcode         String?
+  barcodeType     String?      @map("barcode_type")
+  stockUom        String       @default("KG") @map("stock_uom")  // ERPNext: stock_uom
+  hasVariants     Boolean      @default(false) @map("has_variants")
+  variantOf       String?      @map("variant_of") @db.Uuid
+  hasSerialNo     Boolean      @default(false) @map("has_serial_no")
+  hasBatchNo      Boolean      @default(false) @map("has_batch_no")
+  shelfLife       Int?         @map("shelf_life")
+  endOfLife       DateTime?    @map("end_of_life") @db.Date
   defaultMoisture Decimal?     @map("default_moisture") @db.Decimal(5, 2)
+  standardRate    Decimal      @default(0) @map("standard_rate") @db.Decimal(18, 4)
+  valuationRate   Decimal      @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  valuationMethod String?      @map("valuation_method")
+  minOrderQty     Decimal      @default(0) @map("min_order_qty") @db.Decimal(18, 4)
+  safetyStock     Decimal      @default(0) @map("safety_stock") @db.Decimal(18, 4)
+  reorderLevel    Decimal      @default(0) @map("reorder_level") @db.Decimal(18, 4)
+  reorderQty      Decimal      @default(0) @map("reorder_qty") @db.Decimal(18, 4)
+  leadTimeDays    Int          @default(0) @map("lead_time_days")
+  lastPurchaseRate Decimal     @default(0) @map("last_purchase_rate") @db.Decimal(18, 4)
+  defaultWarehouseId String?   @map("default_warehouse_id") @db.Uuid
+  defaultIncomeAccountId String? @map("default_income_account_id") @db.Uuid
+  defaultExpenseAccountId String? @map("default_expense_account_id") @db.Uuid
+  defaultCostCenterId String?  @map("default_cost_center_id") @db.Uuid
+  defaultSupplier String?      @map("default_supplier")
+  defaultBuyingPriceListId String? @map("default_buying_price_list_id") @db.Uuid
+  defaultSellingPriceListId String? @map("default_selling_price_list_id") @db.Uuid
+  weightPerUnit   Decimal?     @map("weight_per_unit") @db.Decimal(18, 4)
+  weightUom       String?      @map("weight_uom")
+  isSalesItem     Boolean      @default(true) @map("is_sales_item")
+  isPurchaseItem  Boolean      @default(true) @map("is_purchase_item")
+  isStockItem     Boolean      @default(true) @map("is_stock_item")
+  isFixedAsset    Boolean      @default(false) @map("is_fixed_asset")
   description     String?
+  imageUrl        String?      @map("image_url")
+  totalProjectedQty Decimal    @default(0) @map("total_projected_qty") @db.Decimal(18, 4)
+  openingStock    Decimal      @default(0) @map("opening_stock") @db.Decimal(18, 4)
+  openingStockRate Decimal     @default(0) @map("opening_stock_rate") @db.Decimal(18, 4)
   isActive        Boolean      @default(true) @map("is_active")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
@@ -916,24 +1209,55 @@ model PaddyPurchase {
   supplierId           String        @map("supplier_id") @db.Uuid
   riceVarietyId        String        @map("rice_variety_id") @db.Uuid
   brokerId             String?       @map("broker_id") @db.Uuid
+  namingSeries         String?       @map("naming_series")
+  costCenterId         String?       @map("cost_center_id") @db.Uuid
+  projectId            String?       @map("project_id") @db.Uuid
+  warehouseId          String?       @map("warehouse_id") @db.Uuid
+  currency             String        @default("PKR")
+  exchangeRate         Decimal       @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  weighbridgeSlipId    String?       @map("weighbridge_slip_id") @db.Uuid
   grossWeight          Decimal       @map("gross_weight") @db.Decimal(18, 4)
   tareWeight           Decimal       @default(0) @map("tare_weight") @db.Decimal(18, 4)
   netWeight            Decimal       @map("net_weight") @db.Decimal(18, 4)
   moisturePercentage   Decimal?      @map("moisture_percentage") @db.Decimal(5, 2)
+  brokenPercentage     Decimal?      @map("broken_percentage") @db.Decimal(5, 2)
+  foreignMatter        Decimal?      @map("foreign_matter") @db.Decimal(5, 2)
   deductionPercentage  Decimal?      @map("deduction_percentage") @db.Decimal(5, 2)
+  deductionWeight      Decimal       @default(0) @map("deduction_weight") @db.Decimal(18, 4)
   finalWeight          Decimal       @map("final_weight") @db.Decimal(18, 4)
   ratePerUnit          Decimal       @map("rate_per_unit") @db.Decimal(18, 4)
   grossAmount          Decimal       @map("gross_amount") @db.Decimal(18, 4)
-  deductions           Json?         @default("{}") 
+  bardanaAmount        Decimal       @default(0) @map("bardana_amount") @db.Decimal(18, 4)
+  labourCharges        Decimal       @default(0) @map("labour_charges") @db.Decimal(18, 4)
+  transportCharges     Decimal       @default(0) @map("transport_charges") @db.Decimal(18, 4)
+  commissionAmount     Decimal       @default(0) @map("commission_amount") @db.Decimal(18, 4)
+  commissionRate       Decimal       @default(0) @map("commission_rate") @db.Decimal(5, 2)
+  deductions           Json?         @default("{}")
+  taxAmount            Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  withholdingTaxAmount Decimal       @default(0) @map("withholding_tax_amount") @db.Decimal(18, 4)
+  roundingAdjustment   Decimal       @default(0) @map("rounding_adjustment") @db.Decimal(18, 4)
   netAmount            Decimal       @map("net_amount") @db.Decimal(18, 4)
+  outstandingAmount    Decimal       @default(0) @map("outstanding_amount") @db.Decimal(18, 4)
+  paidAmount           Decimal       @default(0) @map("paid_amount") @db.Decimal(18, 4)
   qualityGrade         QualityGrade? @map("quality_grade")
   lotNumber            String?       @map("lot_number")
+  bagCount             Int?          @map("bag_count")
+  bagWeight            Decimal?      @map("bag_weight") @db.Decimal(10, 2)
   vehicleNumber        String?       @map("vehicle_number")
+  driverName           String?       @map("driver_name")
+  driverPhone          String?       @map("driver_phone")
   gatePassNumber       String?       @map("gate_pass_number")
+  inWords              String?       @map("in_words")
   paymentStatus        PaymentStatus @default(UNPAID) @map("payment_status")
+  docStatus            Int           @default(0) @map("doc_status")
   journalEntryId       String?       @map("journal_entry_id") @db.Uuid
+  termsAndConditions   String?       @map("terms_and_conditions") @db.Text
   notes                String?
+  remarks              String?       @db.Text
+  amendedFrom          String?       @map("amended_from") @db.Uuid
   createdBy            String?       @map("created_by") @db.Uuid
+  submittedBy          String?       @map("submitted_by") @db.Uuid
+  submittedAt          DateTime?     @map("submitted_at")
   createdAt            DateTime      @default(now()) @map("created_at")
   updatedAt            DateTime      @updatedAt @map("updated_at")
   deletedAt            DateTime?     @map("deleted_at")
@@ -1109,13 +1433,23 @@ enum MovementType {
 model Warehouse {
   id             String  @id @default(uuid()) @db.Uuid
   organizationId String  @map("organization_id") @db.Uuid
-  branchId       String? @map("branch_id") @db.Uuid
+  branchId       String?  @map("branch_id") @db.Uuid
+  parentWarehouseId String? @map("parent_warehouse_id") @db.Uuid
   name           String
   code           String
+  warehouseType  String?  @map("warehouse_type")  // Transit, Stores, etc.
   address        String?
+  city           String?
+  state          String?
+  country        String?  @default("Pakistan")
+  phone          String?
+  email          String?
   capacity       Decimal? @db.Decimal(18, 2)
   capacityUnit   String?  @default("TON") @map("capacity_unit")
   managerId      String?  @map("manager_id") @db.Uuid
+  isGroup        Boolean  @default(false) @map("is_group")
+  defaultAccountId String? @map("default_account_id") @db.Uuid
+  defaultInTransitAccountId String? @map("default_in_transit_account_id") @db.Uuid
   isActive       Boolean  @default(true) @map("is_active")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
@@ -1142,18 +1476,35 @@ model InventoryItem {
   organizationId String       @map("organization_id") @db.Uuid
   warehouseId    String       @map("warehouse_id") @db.Uuid
   riceVarietyId  String       @map("rice_variety_id") @db.Uuid
+  itemCode       String?      @map("item_code")
+  itemName       String?      @map("item_name")
   lotNumber      String?      @map("lot_number")
   batchNumber    String?      @map("batch_number")
+  serialNo       String?      @map("serial_no")
   quantity       Decimal      @db.Decimal(18, 4)
+  reservedQty    Decimal      @default(0) @map("reserved_qty") @db.Decimal(18, 4)
+  orderedQty     Decimal      @default(0) @map("ordered_qty") @db.Decimal(18, 4)
+  projectedQty   Decimal      @default(0) @map("projected_qty") @db.Decimal(18, 4)
+  actualQty      Decimal      @default(0) @map("actual_qty") @db.Decimal(18, 4)
   unit           String       @default("KG")
+  stockUom       String?      @map("stock_uom")
   bagCount       Int?         @map("bag_count")
   bagWeight      Decimal?     @map("bag_weight") @db.Decimal(10, 2)
   qualityGrade   QualityGrade? @map("quality_grade")
   moisture       Decimal?     @db.Decimal(5, 2)
   valuationRate  Decimal      @default(0) @map("valuation_rate") @db.Decimal(18, 4)
   totalValue     Decimal      @default(0) @map("total_value") @db.Decimal(18, 4)
+  valuationMethod String?     @map("valuation_method")
+  expiryDate     DateTime?    @map("expiry_date") @db.Date
+  warrantyDate   DateTime?    @map("warranty_date") @db.Date
   barcode        String?
   qrCode         String?      @map("qr_code")
+  imageUrl       String?      @map("image_url")
+  shelfLocation  String?      @map("shelf_location")
+  binId          String?      @map("bin_id") @db.Uuid
+  lastPurchaseRate Decimal    @default(0) @map("last_purchase_rate") @db.Decimal(18, 4)
+  lastSalesRate  Decimal      @default(0) @map("last_sales_rate") @db.Decimal(18, 4)
+  lastMovementDate DateTime?  @map("last_movement_date") @db.Date
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -1171,16 +1522,39 @@ model InventoryItem {
 model StockMovement {
   id                     String       @id @default(uuid()) @db.Uuid
   organizationId         String       @map("organization_id") @db.Uuid
+  movementNumber         String?      @map("movement_number")
+  namingSeries           String?      @map("naming_series")
   movementType           MovementType @map("movement_type")
+  purpose                String?      // Material Issue, Material Receipt, Material Transfer, etc.
   sourceWarehouseId      String?      @map("source_warehouse_id") @db.Uuid
   destinationWarehouseId String?      @map("destination_warehouse_id") @db.Uuid
   riceVarietyId          String?      @map("rice_variety_id") @db.Uuid
+  itemCode               String?      @map("item_code")
+  itemName               String?      @map("item_name")
   quantity               Decimal      @db.Decimal(18, 4)
   unit                   String       @default("KG")
+  stockUom               String?      @map("stock_uom")
+  conversionFactor       Decimal      @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  basicRate              Decimal      @default(0) @map("basic_rate") @db.Decimal(18, 4)
+  basicAmount            Decimal      @default(0) @map("basic_amount") @db.Decimal(18, 4)
+  valuationRate          Decimal      @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  totalValue             Decimal      @default(0) @map("total_value") @db.Decimal(18, 4)
+  costCenterId           String?      @map("cost_center_id") @db.Uuid
+  projectId              String?      @map("project_id") @db.Uuid
+  expenseAccountId       String?      @map("expense_account_id") @db.Uuid
+  batchNo                String?      @map("batch_no")
+  serialNo               String?      @map("serial_no")
+  lotNumber              String?      @map("lot_number")
+  bagCount               Int?         @map("bag_count")
+  bagWeight              Decimal?     @map("bag_weight") @db.Decimal(10, 2)
   referenceType          String?      @map("reference_type")
   referenceId            String?      @map("reference_id") @db.Uuid
+  referenceName          String?      @map("reference_name")
   movementDate           DateTime     @map("movement_date") @db.Date
+  postingTime            String?      @map("posting_time")
+  docStatus              Int          @default(0) @map("doc_status")
   narration              String?
+  remarks                String?      @db.Text
   createdBy              String?      @map("created_by") @db.Uuid
   createdAt              DateTime     @default(now()) @map("created_at")
 
@@ -1248,23 +1622,50 @@ enum DispatchStatus {
 }
 
 model Customer {
-  id             String       @id @default(uuid()) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  name           String
-  company        String?
-  phone          String?
-  email          String?
-  address        String?
-  city           String?
-  customerType   CustomerType @default(DEALER) @map("customer_type")
-  cnic           String?
-  ntn            String?
-  creditLimit    Decimal      @default(0) @map("credit_limit") @db.Decimal(18, 4)
-  openingBalance Decimal      @default(0) @map("opening_balance") @db.Decimal(18, 4)
-  isActive       Boolean      @default(true) @map("is_active")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  deletedAt      DateTime?    @map("deleted_at")
+  id                String       @id @default(uuid()) @db.Uuid
+  organizationId    String       @map("organization_id") @db.Uuid
+  customerCode      String?      @map("customer_code")
+  name              String
+  customerName      String?      @map("customer_name")  // ERPNext: customer_name (display name)
+  company           String?
+  customerGroup     String?      @map("customer_group")  // ERPNext: customer_group
+  territory         String?      // ERPNext: territory
+  phone             String?
+  mobileNo          String?      @map("mobile_no")
+  email             String?
+  website           String?
+  address           String?
+  addressLine2      String?      @map("address_line_2")
+  city              String?
+  state             String?
+  postalCode        String?      @map("postal_code")
+  country           String?      @default("Pakistan")
+  customerType      CustomerType @default(DEALER) @map("customer_type")
+  cnic              String?
+  ntn               String?
+  salesTaxNo        String?      @map("sales_tax_no")
+  fax               String?
+  gstCategory       String?      @map("gst_category")  // Registered, Unregistered, etc.
+  gstNo             String?      @map("gst_no")
+  paymentTermsDays  Int?         @map("payment_terms_days")
+  creditLimit       Decimal      @default(0) @map("credit_limit") @db.Decimal(18, 4)
+  openingBalance    Decimal      @default(0) @map("opening_balance") @db.Decimal(18, 4)
+  defaultCurrency   String       @default("PKR") @map("default_currency")
+  defaultBankAccountId String?   @map("default_bank_account_id") @db.Uuid
+  defaultReceivableAccountId String? @map("default_receivable_account_id") @db.Uuid
+  defaultPriceListId String?     @map("default_price_list_id") @db.Uuid
+  defaultSalespersonId String?   @map("default_salesperson_id") @db.Uuid
+  taxWithholdingCategory String? @map("tax_withholding_category")
+  taxId             String?      @map("tax_id")
+  contactPerson     String?      @map("contact_person")
+  loyaltyProgram    String?      @map("loyalty_program")
+  loyaltyPoints     Int          @default(0) @map("loyalty_points")
+  isFrozen          Boolean      @default(false) @map("is_frozen")
+  isInternal        Boolean      @default(false) @map("is_internal")
+  isActive          Boolean      @default(true) @map("is_active")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  deletedAt         DateTime?    @map("deleted_at")
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   salesOrders      SalesOrder[]
@@ -1278,28 +1679,68 @@ model Customer {
   equipmentCards   EquipmentCard[]
   salesQuotations  SalesQuotation[]
 
+  @@unique([organizationId, customerCode])
   @@index([organizationId])
+  @@index([organizationId, customerType])
+  @@index([organizationId, territory])
   @@map("customers")
 }
 
 model SalesOrder {
   id             String      @id @default(uuid()) @db.Uuid
   organizationId String      @map("organization_id") @db.Uuid
-  branchId       String      @map("branch_id") @db.Uuid
-  orderNumber    String      @map("order_number")
-  date           DateTime    @db.Date
-  customerId     String      @map("customer_id") @db.Uuid
-  status         OrderStatus @default(DRAFT)
-  totalAmount    Decimal     @default(0) @map("total_amount") @db.Decimal(18, 4)
-  discount       Decimal     @default(0) @db.Decimal(18, 4)
-  taxAmount      Decimal     @default(0) @map("tax_amount") @db.Decimal(18, 4)
-  netAmount      Decimal     @default(0) @map("net_amount") @db.Decimal(18, 4)
-  deliveryDate   DateTime?   @map("delivery_date") @db.Date
-  notes          String?
-  createdBy      String?     @map("created_by") @db.Uuid
-  createdAt      DateTime    @default(now()) @map("created_at")
-  updatedAt      DateTime    @updatedAt @map("updated_at")
-  deletedAt      DateTime?   @map("deleted_at")
+  branchId          String      @map("branch_id") @db.Uuid
+  orderNumber       String      @map("order_number")
+  namingSeries      String?     @map("naming_series")
+  date              DateTime    @db.Date
+  deliveryDate      DateTime?   @map("delivery_date") @db.Date
+  customerId        String      @map("customer_id") @db.Uuid
+  customerName      String?     @map("customer_name")
+  customerAddress   String?     @map("customer_address") @db.Text
+  contactPerson     String?     @map("contact_person")
+  contactEmail      String?     @map("contact_email")
+  contactMobile     String?     @map("contact_mobile")
+  shippingAddress   String?     @map("shipping_address") @db.Text
+  currency          String      @default("PKR")
+  exchangeRate      Decimal     @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  priceListId       String?     @map("price_list_id") @db.Uuid
+  costCenterId      String?     @map("cost_center_id") @db.Uuid
+  projectId         String?     @map("project_id") @db.Uuid
+  status            OrderStatus @default(DRAFT)
+  totalQty          Decimal     @default(0) @map("total_qty") @db.Decimal(18, 4)
+  totalAmount       Decimal     @default(0) @map("total_amount") @db.Decimal(18, 4)
+  netTotal          Decimal     @default(0) @map("net_total") @db.Decimal(18, 4)
+  discountPercentage Decimal    @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discount          Decimal     @default(0) @db.Decimal(18, 4)
+  applyDiscountOn   String?     @map("apply_discount_on")
+  taxTemplateId     String?     @map("tax_template_id") @db.Uuid
+  taxesAndCharges   Json?       @map("taxes_and_charges") @default("[]")
+  taxAmount         Decimal     @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  grandTotal        Decimal     @default(0) @map("grand_total") @db.Decimal(18, 4)
+  roundingAdjustment Decimal    @default(0) @map("rounding_adjustment") @db.Decimal(18, 4)
+  roundedTotal      Decimal     @default(0) @map("rounded_total") @db.Decimal(18, 4)
+  inWords           String?     @map("in_words")
+  netAmount         Decimal     @default(0) @map("net_amount") @db.Decimal(18, 4)
+  advancePaid       Decimal     @default(0) @map("advance_paid") @db.Decimal(18, 4)
+  salespersonId     String?     @map("salesperson_id") @db.Uuid
+  commissionRate    Decimal     @default(0) @map("commission_rate") @db.Decimal(5, 2)
+  totalCommission   Decimal     @default(0) @map("total_commission") @db.Decimal(18, 4)
+  paymentTerms      String?     @map("payment_terms")
+  paymentTermsDays  Int?        @map("payment_terms_days")
+  letterHead        String?     @map("letter_head")
+  termsAndConditions String?    @map("terms_and_conditions") @db.Text
+  notes             String?
+  remarks           String?     @db.Text
+  docStatus         Int         @default(0) @map("doc_status")
+  perDelivered      Decimal     @default(0) @map("per_delivered") @db.Decimal(5, 2)
+  perBilled         Decimal     @default(0) @map("per_billed") @db.Decimal(5, 2)
+  amendedFrom       String?     @map("amended_from") @db.Uuid
+  createdBy         String?     @map("created_by") @db.Uuid
+  submittedBy       String?     @map("submitted_by") @db.Uuid
+  submittedAt       DateTime?   @map("submitted_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  deletedAt         DateTime?   @map("deleted_at")
 
   organization     Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch           Branch            @relation(fields: [branchId], references: [id])
@@ -1312,20 +1753,46 @@ model SalesOrder {
   @@unique([organizationId, orderNumber])
   @@index([organizationId, date])
   @@index([customerId])
+  @@index([organizationId, docStatus])
   @@map("sales_orders")
 }
 
 model SalesOrderItem {
   id            String  @id @default(uuid()) @db.Uuid
   salesOrderId  String  @map("sales_order_id") @db.Uuid
-  riceVarietyId String  @map("rice_variety_id") @db.Uuid
-  quantity      Decimal @db.Decimal(18, 4)
-  unit          String  @default("KG")
-  rate          Decimal @db.Decimal(18, 4)
-  amount        Decimal @db.Decimal(18, 4)
-  lotNumber     String? @map("lot_number")
-  warehouseId   String? @map("warehouse_id") @db.Uuid
-  createdAt     DateTime @default(now()) @map("created_at")
+  riceVarietyId    String   @map("rice_variety_id") @db.Uuid
+  itemCode         String?  @map("item_code")
+  itemName         String?  @map("item_name")
+  description      String?
+  quantity         Decimal  @db.Decimal(18, 4)
+  stockQty         Decimal  @default(0) @map("stock_qty") @db.Decimal(18, 4)
+  unit             String   @default("KG")
+  stockUom         String?  @map("stock_uom")
+  conversionFactor Decimal  @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  priceListRate    Decimal  @default(0) @map("price_list_rate") @db.Decimal(18, 4)
+  rate             Decimal  @db.Decimal(18, 4)
+  baseRate         Decimal  @default(0) @map("base_rate") @db.Decimal(18, 4)
+  amount           Decimal  @db.Decimal(18, 4)
+  baseAmount       Decimal  @default(0) @map("base_amount") @db.Decimal(18, 4)
+  discountPercentage Decimal @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discountAmount   Decimal  @default(0) @map("discount_amount") @db.Decimal(18, 4)
+  taxRate          Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount        Decimal  @default(0) @map("net_amount") @db.Decimal(18, 4)
+  netRate          Decimal  @default(0) @map("net_rate") @db.Decimal(18, 4)
+  lotNumber        String?  @map("lot_number")
+  batchNo          String?  @map("batch_no")
+  serialNo         String?  @map("serial_no")
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  deliveredQty     Decimal  @default(0) @map("delivered_qty") @db.Decimal(18, 4)
+  billedQty        Decimal  @default(0) @map("billed_qty") @db.Decimal(18, 4)
+  deliveryDate     DateTime? @map("delivery_date") @db.Date
+  bagCount         Int?     @map("bag_count")
+  bagWeight        Decimal? @map("bag_weight") @db.Decimal(10, 2)
+  idx              Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   salesOrder  SalesOrder  @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)
   riceVariety RiceVariety @relation(fields: [riceVarietyId], references: [id])
@@ -1338,20 +1805,68 @@ model SalesOrderItem {
 model SalesInvoice {
   id             String        @id @default(uuid()) @db.Uuid
   organizationId String        @map("organization_id") @db.Uuid
-  invoiceNumber  String        @map("invoice_number")
-  date           DateTime      @db.Date
-  salesOrderId   String?       @map("sales_order_id") @db.Uuid
-  customerId     String        @map("customer_id") @db.Uuid
-  totalAmount    Decimal       @default(0) @map("total_amount") @db.Decimal(18, 4)
-  discount       Decimal       @default(0) @db.Decimal(18, 4)
-  taxAmount      Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 4)
-  netAmount      Decimal       @default(0) @map("net_amount") @db.Decimal(18, 4)
-  paymentStatus  PaymentStatus @default(UNPAID) @map("payment_status")
-  dueDate        DateTime?     @map("due_date") @db.Date
-  journalEntryId String?       @map("journal_entry_id") @db.Uuid
-  createdBy      String?       @map("created_by") @db.Uuid
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
+  branchId          String?       @map("branch_id") @db.Uuid
+  invoiceNumber     String        @map("invoice_number")
+  namingSeries      String?       @map("naming_series")
+  date              DateTime      @db.Date
+  postingTime       String?       @map("posting_time")
+  dueDate           DateTime?     @map("due_date") @db.Date
+  isReturn          Boolean       @default(false) @map("is_return")
+  returnAgainst     String?       @map("return_against") @db.Uuid
+  salesOrderId      String?       @map("sales_order_id") @db.Uuid
+  deliveryChallanId String?       @map("delivery_challan_id") @db.Uuid
+  customerId        String        @map("customer_id") @db.Uuid
+  customerName      String?       @map("customer_name")
+  customerAddress   String?       @map("customer_address") @db.Text
+  contactPerson     String?       @map("contact_person")
+  contactEmail      String?       @map("contact_email")
+  contactMobile     String?       @map("contact_mobile")
+  shippingAddress   String?       @map("shipping_address") @db.Text
+  currency          String        @default("PKR")
+  exchangeRate      Decimal       @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  priceListId       String?       @map("price_list_id") @db.Uuid
+  costCenterId      String?       @map("cost_center_id") @db.Uuid
+  projectId         String?       @map("project_id") @db.Uuid
+  totalQty          Decimal       @default(0) @map("total_qty") @db.Decimal(18, 4)
+  totalAmount       Decimal       @default(0) @map("total_amount") @db.Decimal(18, 4)
+  netTotal          Decimal       @default(0) @map("net_total") @db.Decimal(18, 4)
+  discountPercentage Decimal      @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discount          Decimal       @default(0) @db.Decimal(18, 4)
+  applyDiscountOn   String?       @map("apply_discount_on")
+  taxTemplateId     String?       @map("tax_template_id") @db.Uuid
+  taxesAndCharges   Json?         @map("taxes_and_charges") @default("[]")
+  taxAmount         Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  grandTotal        Decimal       @default(0) @map("grand_total") @db.Decimal(18, 4)
+  roundingAdjustment Decimal      @default(0) @map("rounding_adjustment") @db.Decimal(18, 4)
+  roundedTotal      Decimal       @default(0) @map("rounded_total") @db.Decimal(18, 4)
+  inWords           String?       @map("in_words")
+  netAmount         Decimal       @default(0) @map("net_amount") @db.Decimal(18, 4)
+  outstandingAmount Decimal       @default(0) @map("outstanding_amount") @db.Decimal(18, 4)
+  paidAmount        Decimal       @default(0) @map("paid_amount") @db.Decimal(18, 4)
+  writeOffAmount    Decimal       @default(0) @map("write_off_amount") @db.Decimal(18, 4)
+  writeOffAccountId String?       @map("write_off_account_id") @db.Uuid
+  paymentStatus     PaymentStatus @default(UNPAID) @map("payment_status")
+  debitToId         String?       @map("debit_to_id") @db.Uuid
+  paymentTerms      String?       @map("payment_terms")
+  paymentTermsDays  Int?          @map("payment_terms_days")
+  salespersonId     String?       @map("salesperson_id") @db.Uuid
+  commissionRate    Decimal       @default(0) @map("commission_rate") @db.Decimal(5, 2)
+  totalCommission   Decimal       @default(0) @map("total_commission") @db.Decimal(18, 4)
+  letterHead        String?       @map("letter_head")
+  termsAndConditions String?      @map("terms_and_conditions") @db.Text
+  remarks           String?       @db.Text
+  docStatus         Int           @default(0) @map("doc_status")
+  amendedFrom       String?       @map("amended_from") @db.Uuid
+  journalEntryId    String?       @map("journal_entry_id") @db.Uuid
+  isOpeningEntry    Boolean       @default(false) @map("is_opening_entry")
+  createdBy         String?       @map("created_by") @db.Uuid
+  submittedBy       String?       @map("submitted_by") @db.Uuid
+  submittedAt       DateTime?     @map("submitted_at")
+  cancelledBy       String?       @map("cancelled_by") @db.Uuid
+  cancelledAt       DateTime?     @map("cancelled_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  deletedAt         DateTime?     @map("deleted_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   salesOrder   SalesOrder?   @relation(fields: [salesOrderId], references: [id])
@@ -1360,11 +1875,12 @@ model SalesInvoice {
   creditNotes  CreditNote[]
   salesReturns SalesReturn[]
   items        SalesInvoiceItem[]
-  paidAmount   Decimal       @default(0) @map("paid_amount") @db.Decimal(18, 4)
 
   @@unique([organizationId, invoiceNumber])
   @@index([organizationId, date])
   @@index([customerId])
+  @@index([organizationId, docStatus])
+  @@index([organizationId, paymentStatus])
   @@map("sales_invoices")
 }
 
@@ -1372,20 +1888,49 @@ model DeliveryChallan {
   id                     String         @id @default(uuid()) @db.Uuid
   organizationId         String         @map("organization_id") @db.Uuid
   challanNumber          String         @map("challan_number")
+  namingSeries           String?        @map("naming_series")
   date                   DateTime       @db.Date
+  postingTime            String?        @map("posting_time")
   salesOrderId           String?        @map("sales_order_id") @db.Uuid
+  salesInvoiceId         String?        @map("sales_invoice_id") @db.Uuid
   customerId             String         @map("customer_id") @db.Uuid
+  customerName           String?        @map("customer_name")
+  customerAddress        String?        @map("customer_address") @db.Text
+  shippingAddress        String?        @map("shipping_address") @db.Text
+  contactPerson          String?        @map("contact_person")
+  contactEmail           String?        @map("contact_email")
   vehicleId              String?        @map("vehicle_id") @db.Uuid
+  vehicleNumber          String?        @map("vehicle_number")
   driverName             String?        @map("driver_name")
   driverPhone            String?        @map("driver_phone")
+  transporterName        String?        @map("transporter_name")
+  lrNo                   String?        @map("lr_no")  // Lorry receipt number
+  lrDate                 DateTime?      @map("lr_date") @db.Date
   dispatchFromWarehouseId String?       @map("dispatch_from_warehouse_id") @db.Uuid
+  costCenterId           String?        @map("cost_center_id") @db.Uuid
+  projectId              String?        @map("project_id") @db.Uuid
+  totalQty               Decimal        @default(0) @map("total_qty") @db.Decimal(18, 4)
+  totalNetWeight         Decimal        @default(0) @map("total_net_weight") @db.Decimal(18, 4)
+  totalBags              Int            @default(0) @map("total_bags")
+  grandTotal             Decimal        @default(0) @map("grand_total") @db.Decimal(18, 4)
+  perBilled              Decimal        @default(0) @map("per_billed") @db.Decimal(5, 2)
+  perInstalled           Decimal        @default(0) @map("per_installed") @db.Decimal(5, 2)
   status                 DispatchStatus @default(PENDING)
+  docStatus              Int            @default(0) @map("doc_status")
   deliveredAt            DateTime?      @map("delivered_at")
   receiverName           String?        @map("receiver_name")
+  receiverPhone          String?        @map("receiver_phone")
+  termsAndConditions     String?        @map("terms_and_conditions") @db.Text
+  remarks                String?        @db.Text
   notes                  String?
+  letterHead             String?        @map("letter_head")
+  amendedFrom            String?        @map("amended_from") @db.Uuid
   createdBy              String?        @map("created_by") @db.Uuid
+  submittedBy            String?        @map("submitted_by") @db.Uuid
+  submittedAt            DateTime?      @map("submitted_at")
   createdAt              DateTime       @default(now()) @map("created_at")
   updatedAt              DateTime       @updatedAt @map("updated_at")
+  deletedAt              DateTime?      @map("deleted_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   salesOrder   SalesOrder?  @relation(fields: [salesOrderId], references: [id])
@@ -1837,18 +2382,49 @@ model PurchaseOrder {
   id             String              @id @default(uuid()) @db.Uuid
   organizationId String              @map("organization_id") @db.Uuid
   orderNumber    String              @map("order_number")
+  namingSeries   String?             @map("naming_series")
   date           DateTime            @db.Date
   supplierId     String              @map("supplier_id") @db.Uuid
+  supplierName   String?             @map("supplier_name")
+  supplierAddress String?            @map("supplier_address") @db.Text
   branchId       String?             @map("branch_id") @db.Uuid
+  currency       String              @default("PKR")
+  exchangeRate   Decimal             @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  costCenterId   String?             @map("cost_center_id") @db.Uuid
+  projectId      String?             @map("project_id") @db.Uuid
+  priceListId    String?             @map("price_list_id") @db.Uuid
+  totalQty       Decimal             @default(0) @map("total_qty") @db.Decimal(18, 4)
   totalAmount    Decimal             @default(0) @map("total_amount") @db.Decimal(18, 4)
+  netTotal       Decimal             @default(0) @map("net_total") @db.Decimal(18, 4)
+  discountPercentage Decimal         @default(0) @map("discount_percentage") @db.Decimal(5, 2)
   discount       Decimal             @default(0) @db.Decimal(18, 4)
+  taxTemplateId  String?             @map("tax_template_id") @db.Uuid
+  taxesAndCharges Json?              @map("taxes_and_charges") @default("[]")
   taxAmount      Decimal             @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  grandTotal     Decimal             @default(0) @map("grand_total") @db.Decimal(18, 4)
+  roundingAdjustment Decimal         @default(0) @map("rounding_adjustment") @db.Decimal(18, 4)
+  roundedTotal   Decimal             @default(0) @map("rounded_total") @db.Decimal(18, 4)
+  inWords        String?             @map("in_words")
   netAmount      Decimal             @default(0) @map("net_amount") @db.Decimal(18, 4)
+  advancePaid    Decimal             @default(0) @map("advance_paid") @db.Decimal(18, 4)
   expectedDate   DateTime?           @map("expected_date") @db.Date
+  paymentTerms   String?             @map("payment_terms")
+  paymentTermsDays Int?              @map("payment_terms_days")
+  shippingAddress String?            @map("shipping_address") @db.Text
   terms          String?
+  termsAndConditions String?         @map("terms_and_conditions") @db.Text
   narration      String?
+  letterHead     String?             @map("letter_head")
   status         PurchaseOrderStatus @default(DRAFT)
+  docStatus      Int                 @default(0) @map("doc_status")
+  perReceived    Decimal             @default(0) @map("per_received") @db.Decimal(5, 2)
+  perBilled      Decimal             @default(0) @map("per_billed") @db.Decimal(5, 2)
+  contactPerson  String?             @map("contact_person")
+  contactEmail   String?             @map("contact_email")
+  amendedFrom    String?             @map("amended_from") @db.Uuid
   createdBy      String?             @map("created_by") @db.Uuid
+  submittedBy    String?             @map("submitted_by") @db.Uuid
+  submittedAt    DateTime?           @map("submitted_at")
   createdAt      DateTime            @default(now()) @map("created_at")
   updatedAt      DateTime            @updatedAt @map("updated_at")
   deletedAt      DateTime?           @map("deleted_at")
@@ -1866,13 +2442,38 @@ model PurchaseOrder {
 model PurchaseOrderItem {
   id              String  @id @default(uuid()) @db.Uuid
   purchaseOrderId String  @map("purchase_order_id") @db.Uuid
-  riceVarietyId   String  @map("rice_variety_id") @db.Uuid
-  quantity        Decimal @db.Decimal(18, 4)
-  unit            String  @default("KG")
-  rate            Decimal @db.Decimal(18, 4)
-  amount          Decimal @db.Decimal(18, 4)
-  receivedQty     Decimal @default(0) @map("received_qty") @db.Decimal(18, 4)
-  createdAt       DateTime @default(now()) @map("created_at")
+  riceVarietyId    String   @map("rice_variety_id") @db.Uuid
+  itemCode         String?  @map("item_code")
+  itemName         String?  @map("item_name")
+  description      String?
+  quantity         Decimal  @db.Decimal(18, 4)
+  stockQty         Decimal  @default(0) @map("stock_qty") @db.Decimal(18, 4)
+  unit             String   @default("KG")
+  stockUom         String?  @map("stock_uom")
+  conversionFactor Decimal  @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  priceListRate    Decimal  @default(0) @map("price_list_rate") @db.Decimal(18, 4)
+  rate             Decimal  @db.Decimal(18, 4)
+  baseRate         Decimal  @default(0) @map("base_rate") @db.Decimal(18, 4)
+  amount           Decimal  @db.Decimal(18, 4)
+  baseAmount       Decimal  @default(0) @map("base_amount") @db.Decimal(18, 4)
+  discountPercentage Decimal @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discountAmount   Decimal  @default(0) @map("discount_amount") @db.Decimal(18, 4)
+  taxRate          Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount        Decimal  @default(0) @map("net_amount") @db.Decimal(18, 4)
+  netRate          Decimal  @default(0) @map("net_rate") @db.Decimal(18, 4)
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  expenseAccountId String?  @map("expense_account_id") @db.Uuid
+  lotNumber        String?  @map("lot_number")
+  batchNo          String?  @map("batch_no")
+  receivedQty      Decimal  @default(0) @map("received_qty") @db.Decimal(18, 4)
+  billedQty        Decimal  @default(0) @map("billed_qty") @db.Decimal(18, 4)
+  returnedQty      Decimal  @default(0) @map("returned_qty") @db.Decimal(18, 4)
+  expectedDeliveryDate DateTime? @map("expected_delivery_date") @db.Date
+  idx              Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
   riceVariety   RiceVariety   @relation(fields: [riceVarietyId], references: [id])
@@ -1884,18 +2485,49 @@ model PurchaseOrderItem {
 model GoodsReceipt {
   id              String        @id @default(uuid()) @db.Uuid
   organizationId  String        @map("organization_id") @db.Uuid
-  receiptNumber   String        @map("receipt_number")
-  date            DateTime      @db.Date
-  purchaseOrderId String?       @map("purchase_order_id") @db.Uuid
-  supplierId      String        @map("supplier_id") @db.Uuid
-  warehouseId     String        @map("warehouse_id") @db.Uuid
-  totalQuantity   Decimal       @map("total_quantity") @db.Decimal(18, 4)
-  inspectionStatus String?      @map("inspection_status")
-  notes           String?
-  narration       String?
-  createdBy       String?       @map("created_by") @db.Uuid
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  receiptNumber    String        @map("receipt_number")
+  namingSeries     String?       @map("naming_series")
+  date             DateTime      @db.Date
+  postingTime      String?       @map("posting_time")
+  purchaseOrderId  String?       @map("purchase_order_id") @db.Uuid
+  purchaseInvoiceId String?      @map("purchase_invoice_id") @db.Uuid
+  supplierId       String        @map("supplier_id") @db.Uuid
+  supplierName     String?       @map("supplier_name")
+  supplierAddress  String?       @map("supplier_address") @db.Text
+  warehouseId      String        @map("warehouse_id") @db.Uuid
+  rejectedWarehouseId String?    @map("rejected_warehouse_id") @db.Uuid
+  costCenterId     String?       @map("cost_center_id") @db.Uuid
+  projectId        String?       @map("project_id") @db.Uuid
+  currency         String        @default("PKR")
+  exchangeRate     Decimal       @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  totalQty         Decimal       @default(0) @map("total_qty") @db.Decimal(18, 4)
+  totalQuantity    Decimal       @map("total_quantity") @db.Decimal(18, 4)
+  totalNetWeight   Decimal       @default(0) @map("total_net_weight") @db.Decimal(18, 4)
+  totalBags        Int           @default(0) @map("total_bags")
+  totalRejectedQty Decimal       @default(0) @map("total_rejected_qty") @db.Decimal(18, 4)
+  totalAcceptedQty Decimal       @default(0) @map("total_accepted_qty") @db.Decimal(18, 4)
+  perBilled        Decimal       @default(0) @map("per_billed") @db.Decimal(5, 2)
+  inspectionStatus String?       @map("inspection_status")
+  isReturn         Boolean       @default(false) @map("is_return")
+  returnAgainst    String?       @map("return_against") @db.Uuid
+  vehicleNumber    String?       @map("vehicle_number")
+  driverName       String?       @map("driver_name")
+  transporterName  String?       @map("transporter_name")
+  lrNo             String?       @map("lr_no")
+  lrDate           DateTime?     @map("lr_date") @db.Date
+  docStatus        Int           @default(0) @map("doc_status")
+  notes            String?
+  narration        String?
+  remarks          String?       @db.Text
+  termsAndConditions String?     @map("terms_and_conditions") @db.Text
+  letterHead       String?       @map("letter_head")
+  amendedFrom      String?       @map("amended_from") @db.Uuid
+  createdBy        String?       @map("created_by") @db.Uuid
+  submittedBy      String?       @map("submitted_by") @db.Uuid
+  submittedAt      DateTime?     @map("submitted_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+  deletedAt        DateTime?     @map("deleted_at")
 
   organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId], references: [id])
@@ -1911,13 +2543,33 @@ model GoodsReceipt {
 model GoodsReceiptItem {
   id             String  @id @default(uuid()) @db.Uuid
   goodsReceiptId String  @map("goods_receipt_id") @db.Uuid
-  riceVarietyId  String  @map("rice_variety_id") @db.Uuid
-  quantity       Decimal @db.Decimal(18, 4)
-  unit           String  @default("KG")
-  lotNumber      String? @map("lot_number")
-  qualityGrade   QualityGrade? @map("quality_grade")
-  moisture       Decimal? @db.Decimal(5, 2)
-  createdAt      DateTime @default(now()) @map("created_at")
+  riceVarietyId    String   @map("rice_variety_id") @db.Uuid
+  itemCode         String?  @map("item_code")
+  itemName         String?  @map("item_name")
+  description      String?
+  quantity         Decimal  @db.Decimal(18, 4)
+  receivedQty      Decimal  @default(0) @map("received_qty") @db.Decimal(18, 4)
+  rejectedQty      Decimal  @default(0) @map("rejected_qty") @db.Decimal(18, 4)
+  acceptedQty      Decimal  @default(0) @map("accepted_qty") @db.Decimal(18, 4)
+  stockQty         Decimal  @default(0) @map("stock_qty") @db.Decimal(18, 4)
+  unit             String   @default("KG")
+  stockUom         String?  @map("stock_uom")
+  conversionFactor Decimal  @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  rate             Decimal  @default(0) @db.Decimal(18, 4)
+  amount           Decimal  @default(0) @db.Decimal(18, 4)
+  valuationRate    Decimal  @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  warehouseId      String?  @map("warehouse_id") @db.Uuid
+  rejectedWarehouseId String? @map("rejected_warehouse_id") @db.Uuid
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  lotNumber        String?  @map("lot_number")
+  batchNo          String?  @map("batch_no")
+  serialNo         String?  @map("serial_no")
+  qualityGrade     QualityGrade? @map("quality_grade")
+  moisture         Decimal? @db.Decimal(5, 2)
+  purchaseOrderItemId String? @map("purchase_order_item_id") @db.Uuid
+  idx              Int      @default(0)
+  createdAt        DateTime @default(now()) @map("created_at")
 
   goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
   riceVariety  RiceVariety  @relation(fields: [riceVarietyId], references: [id])
@@ -2589,7 +3241,7 @@ model DowntimeLog {
 // DOCUMENT MANAGEMENT
 // ============================================================================
 
-enum DocumentStatus {
+enum DocMgmtStatus {
   DRAFT_DOC
   ACTIVE_DOC
   ARCHIVED
@@ -2608,7 +3260,7 @@ model Document {
   fileSize       Int?           @map("file_size")
   mimeType       String?        @map("mime_type")
   version        Int            @default(1)
-  status         DocumentStatus @default(ACTIVE_DOC)
+  status         DocMgmtStatus @default(ACTIVE_DOC)
   tags           String[]       @default([])
   description    String?
   expiryDate     DateTime?      @map("expiry_date") @db.Date
@@ -2655,7 +3307,7 @@ model Contract {
   value          Decimal?       @db.Decimal(18, 4)
   currency       String         @default("PKR")
   terms          String?        @db.Text
-  status         DocumentStatus @default(ACTIVE_DOC)
+  status         DocMgmtStatus @default(ACTIVE_DOC)
   renewalDate    DateTime?      @map("renewal_date") @db.Date
   autoRenew      Boolean        @default(false) @map("auto_renew")
   signedBy       String?        @map("signed_by")
@@ -4034,6 +4686,8 @@ model Project {
   timesheets       Timesheet[]
   projectExpenses  ProjectExpense[]
   milestones       ProjectMilestone[]
+  glEntries        GeneralLedgerEntry[]
+  jeLines          JournalEntryLine[] @relation("JELineProject")
 
   @@index([organizationId, status])
   @@map("projects")
@@ -4502,8 +5156,11 @@ model CostCenter {
   description      String?
   type             String   @default("COST")
   parentId         String?  @map("parent_id") @db.Uuid
+  isGroup          Boolean  @default(false) @map("is_group")
   managerId        String?  @map("manager_id") @db.Uuid
   isActive         Boolean  @default(true) @map("is_active")
+  lft              Int      @default(0)
+  rgt              Int      @default(0)
   budgetAmount     Decimal  @default(0) @map("budget_amount") @db.Decimal(18, 4)
   actualAmount     Decimal  @default(0) @map("actual_amount") @db.Decimal(18, 4)
   createdAt        DateTime @default(now()) @map("created_at")
@@ -4511,6 +5168,9 @@ model CostCenter {
 
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   allocations      CostAllocation[]
+  defaultForAccounts ChartOfAccount[] @relation("DefaultCostCenter")
+  glEntries        GeneralLedgerEntry[]
+  jeLines          JournalEntryLine[] @relation("JELineCostCenter")
 
   @@unique([organizationId, code])
   @@index([organizationId])
@@ -4872,20 +5532,42 @@ model ReturnRequest {
 model SalesInvoiceItem {
   id               String   @id @default(uuid()) @db.Uuid
   salesInvoiceId   String   @map("sales_invoice_id") @db.Uuid
-  riceVarietyId    String?  @map("rice_variety_id") @db.Uuid
-  description      String
-  quantity         Decimal  @db.Decimal(18, 4)
-  unit             String   @default("KG")
-  rate             Decimal  @db.Decimal(18, 4)
-  amount           Decimal  @db.Decimal(18, 4)
-  taxRate          Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
-  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
-  netAmount        Decimal  @default(0) @map("net_amount") @db.Decimal(18, 4)
-  warehouseId      String?  @map("warehouse_id") @db.Uuid
-  lotNumber        String?  @map("lot_number")
-  bagCount         Int?     @map("bag_count")
-  bagWeight        Decimal? @map("bag_weight") @db.Decimal(10, 2)
-  createdAt        DateTime @default(now()) @map("created_at")
+  riceVarietyId     String?  @map("rice_variety_id") @db.Uuid
+  itemCode          String?  @map("item_code")
+  itemName          String?  @map("item_name")
+  description       String
+  quantity          Decimal  @db.Decimal(18, 4)
+  stockQty          Decimal  @default(0) @map("stock_qty") @db.Decimal(18, 4)
+  unit              String   @default("KG")
+  stockUom          String?  @map("stock_uom")
+  conversionFactor  Decimal  @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  priceListRate     Decimal  @default(0) @map("price_list_rate") @db.Decimal(18, 4)
+  rate              Decimal  @db.Decimal(18, 4)
+  baseRate          Decimal  @default(0) @map("base_rate") @db.Decimal(18, 4)
+  amount            Decimal  @db.Decimal(18, 4)
+  baseAmount        Decimal  @default(0) @map("base_amount") @db.Decimal(18, 4)
+  discountPercentage Decimal @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discountAmount    Decimal  @default(0) @map("discount_amount") @db.Decimal(18, 4)
+  taxRate           Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
+  taxAmount         Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  netAmount         Decimal  @default(0) @map("net_amount") @db.Decimal(18, 4)
+  netRate           Decimal  @default(0) @map("net_rate") @db.Decimal(18, 4)
+  warehouseId       String?  @map("warehouse_id") @db.Uuid
+  costCenterId      String?  @map("cost_center_id") @db.Uuid
+  projectId         String?  @map("project_id") @db.Uuid
+  incomeAccountId   String?  @map("income_account_id") @db.Uuid
+  expenseAccountId  String?  @map("expense_account_id") @db.Uuid
+  lotNumber         String?  @map("lot_number")
+  batchNo           String?  @map("batch_no")
+  serialNo          String?  @map("serial_no")
+  bagCount          Int?     @map("bag_count")
+  bagWeight         Decimal? @map("bag_weight") @db.Decimal(10, 2)
+  deliveredQty      Decimal  @default(0) @map("delivered_qty") @db.Decimal(18, 4)
+  salesOrderItemId  String?  @map("sales_order_item_id") @db.Uuid
+  valuationRate     Decimal  @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  grossProfit       Decimal  @default(0) @map("gross_profit") @db.Decimal(18, 4)
+  idx               Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
 
   salesInvoice     SalesInvoice  @relation(fields: [salesInvoiceId], references: [id], onDelete: Cascade)
   riceVariety      RiceVariety?  @relation(fields: [riceVarietyId], references: [id])
@@ -5013,22 +5695,66 @@ model BardanaTransaction {
 model PurchaseInvoice {
   id               String        @id @default(uuid()) @db.Uuid
   organizationId   String        @map("organization_id") @db.Uuid
-  invoiceNumber    String        @map("invoice_number")
-  vendorInvoiceNo  String?       @map("vendor_invoice_no")
-  date             DateTime      @db.Date
-  supplierId       String        @map("supplier_id") @db.Uuid
-  totalAmount      Decimal       @default(0) @map("total_amount") @db.Decimal(18, 4)
-  discount         Decimal       @default(0) @db.Decimal(18, 4)
-  taxAmount        Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 4)
-  netAmount        Decimal       @default(0) @map("net_amount") @db.Decimal(18, 4)
-  paymentStatus    PaymentStatus @default(UNPAID) @map("payment_status")
-  paidAmount       Decimal       @default(0) @map("paid_amount") @db.Decimal(18, 4)
-  dueDate          DateTime?     @map("due_date") @db.Date
-  journalEntryId   String?       @map("journal_entry_id") @db.Uuid
-  notes            String?
-  createdBy        String?       @map("created_by") @db.Uuid
-  createdAt        DateTime      @default(now()) @map("created_at")
-  updatedAt        DateTime      @updatedAt @map("updated_at")
+  branchId          String?       @map("branch_id") @db.Uuid
+  invoiceNumber     String        @map("invoice_number")
+  namingSeries      String?       @map("naming_series")
+  vendorInvoiceNo   String?       @map("vendor_invoice_no")
+  date              DateTime      @db.Date
+  postingTime       String?       @map("posting_time")
+  dueDate           DateTime?     @map("due_date") @db.Date
+  isReturn          Boolean       @default(false) @map("is_return")
+  returnAgainst     String?       @map("return_against") @db.Uuid
+  supplierId        String        @map("supplier_id") @db.Uuid
+  supplierName      String?       @map("supplier_name")
+  supplierAddress   String?       @map("supplier_address") @db.Text
+  contactPerson     String?       @map("contact_person")
+  contactEmail      String?       @map("contact_email")
+  shippingAddress   String?       @map("shipping_address") @db.Text
+  currency          String        @default("PKR")
+  exchangeRate      Decimal       @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  priceListId       String?       @map("price_list_id") @db.Uuid
+  costCenterId      String?       @map("cost_center_id") @db.Uuid
+  projectId         String?       @map("project_id") @db.Uuid
+  totalQty          Decimal       @default(0) @map("total_qty") @db.Decimal(18, 4)
+  totalAmount       Decimal       @default(0) @map("total_amount") @db.Decimal(18, 4)
+  netTotal          Decimal       @default(0) @map("net_total") @db.Decimal(18, 4)
+  discountPercentage Decimal      @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discount          Decimal       @default(0) @db.Decimal(18, 4)
+  applyDiscountOn   String?       @map("apply_discount_on")
+  taxTemplateId     String?       @map("tax_template_id") @db.Uuid
+  taxesAndCharges   Json?         @map("taxes_and_charges") @default("[]")
+  taxAmount         Decimal       @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  grandTotal        Decimal       @default(0) @map("grand_total") @db.Decimal(18, 4)
+  roundingAdjustment Decimal      @default(0) @map("rounding_adjustment") @db.Decimal(18, 4)
+  roundedTotal      Decimal       @default(0) @map("rounded_total") @db.Decimal(18, 4)
+  inWords           String?       @map("in_words")
+  netAmount         Decimal       @default(0) @map("net_amount") @db.Decimal(18, 4)
+  outstandingAmount Decimal       @default(0) @map("outstanding_amount") @db.Decimal(18, 4)
+  paidAmount        Decimal       @default(0) @map("paid_amount") @db.Decimal(18, 4)
+  writeOffAmount    Decimal       @default(0) @map("write_off_amount") @db.Decimal(18, 4)
+  paymentStatus     PaymentStatus @default(UNPAID) @map("payment_status")
+  creditToId        String?       @map("credit_to_id") @db.Uuid
+  paymentTerms      String?       @map("payment_terms")
+  paymentTermsDays  Int?          @map("payment_terms_days")
+  additionalCosts   Json?         @map("additional_costs") @default("[]")
+  termsAndConditions String?      @map("terms_and_conditions") @db.Text
+  remarks           String?       @db.Text
+  notes             String?
+  docStatus         Int           @default(0) @map("doc_status")
+  amendedFrom       String?       @map("amended_from") @db.Uuid
+  journalEntryId    String?       @map("journal_entry_id") @db.Uuid
+  isOpeningEntry    Boolean       @default(false) @map("is_opening_entry")
+  onHold            Boolean       @default(false) @map("on_hold")
+  holdComment       String?       @map("hold_comment")
+  releaseDate       DateTime?     @map("release_date") @db.Date
+  createdBy         String?       @map("created_by") @db.Uuid
+  submittedBy       String?       @map("submitted_by") @db.Uuid
+  submittedAt       DateTime?     @map("submitted_at")
+  cancelledBy       String?       @map("cancelled_by") @db.Uuid
+  cancelledAt       DateTime?     @map("cancelled_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  deletedAt         DateTime?     @map("deleted_at")
 
   organization     Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   supplier         Supplier             @relation(fields: [supplierId], references: [id])
@@ -5043,20 +5769,306 @@ model PurchaseInvoice {
 model PurchaseInvoiceItem {
   id                 String   @id @default(uuid()) @db.Uuid
   purchaseInvoiceId  String   @map("purchase_invoice_id") @db.Uuid
+  riceVarietyId      String?  @map("rice_variety_id") @db.Uuid
+  itemCode           String?  @map("item_code")
+  itemName           String?  @map("item_name")
   description        String
   quantity           Decimal  @db.Decimal(18, 4)
-  unit               String   @default("PCS")
+  receivedQty        Decimal  @default(0) @map("received_qty") @db.Decimal(18, 4)
+  rejectedQty        Decimal  @default(0) @map("rejected_qty") @db.Decimal(18, 4)
+  stockQty           Decimal  @default(0) @map("stock_qty") @db.Decimal(18, 4)
+  unit               String   @default("KG")
+  stockUom           String?  @map("stock_uom")
+  conversionFactor   Decimal  @default(1) @map("conversion_factor") @db.Decimal(18, 6)
+  priceListRate      Decimal  @default(0) @map("price_list_rate") @db.Decimal(18, 4)
   rate               Decimal  @db.Decimal(18, 4)
+  baseRate           Decimal  @default(0) @map("base_rate") @db.Decimal(18, 4)
   amount             Decimal  @db.Decimal(18, 4)
+  baseAmount         Decimal  @default(0) @map("base_amount") @db.Decimal(18, 4)
+  discountPercentage Decimal  @default(0) @map("discount_percentage") @db.Decimal(5, 2)
+  discountAmount     Decimal  @default(0) @map("discount_amount") @db.Decimal(18, 4)
   taxRate            Decimal  @default(0) @map("tax_rate") @db.Decimal(5, 2)
   taxAmount          Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
   netAmount          Decimal  @default(0) @map("net_amount") @db.Decimal(18, 4)
+  netRate            Decimal  @default(0) @map("net_rate") @db.Decimal(18, 4)
+  valuationRate      Decimal  @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  landedCostVoucherAmount Decimal @default(0) @map("landed_cost_voucher_amount") @db.Decimal(18, 4)
+  warehouseId        String?  @map("warehouse_id") @db.Uuid
+  rejectedWarehouseId String? @map("rejected_warehouse_id") @db.Uuid
+  costCenterId       String?  @map("cost_center_id") @db.Uuid
+  projectId          String?  @map("project_id") @db.Uuid
   expenseAccountId   String?  @map("expense_account_id") @db.Uuid
+  lotNumber          String?  @map("lot_number")
+  batchNo            String?  @map("batch_no")
+  serialNo           String?  @map("serial_no")
+  purchaseOrderItemId String? @map("purchase_order_item_id") @db.Uuid
+  purchaseReceiptId  String?  @map("purchase_receipt_id") @db.Uuid
+  idx                Int      @default(0)
   createdAt          DateTime @default(now()) @map("created_at")
 
   purchaseInvoice    PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
 
   @@index([purchaseInvoiceId])
   @@map("purchase_invoice_items")
+}
+
+// ============================================================================
+// ENTERPRISE ACCOUNTING ENGINE — General Ledger (ERPNext/SAP ACDOCA equivalent)
+// ============================================================================
+
+enum GLEntryStatus {
+  ACTIVE
+  CANCELLED
+}
+
+model GeneralLedgerEntry {
+  id                 String          @id @default(uuid()) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  postingDate        DateTime        @map("posting_date") @db.Date
+  accountId          String          @map("account_id") @db.Uuid
+  accountCode        String          @map("account_code")
+  accountName        String          @map("account_name")
+  debit              Decimal         @default(0) @db.Decimal(18, 4)
+  credit             Decimal         @default(0) @db.Decimal(18, 4)
+  debitInAccountCurrency  Decimal    @default(0) @map("debit_in_account_currency") @db.Decimal(18, 4)
+  creditInAccountCurrency Decimal    @default(0) @map("credit_in_account_currency") @db.Decimal(18, 4)
+  accountCurrency    String          @default("PKR") @map("account_currency")
+  exchangeRate       Decimal         @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  againstAccount     String?         @map("against_account")
+  againstVoucherType String?         @map("against_voucher_type")
+  againstVoucherId   String?         @map("against_voucher_id") @db.Uuid
+  voucherType        String          @map("voucher_type")
+  voucherNo          String          @map("voucher_no")
+  voucherId          String          @map("voucher_id") @db.Uuid
+  journalEntryId     String?         @map("journal_entry_id") @db.Uuid
+  partyType          String?         @map("party_type")
+  partyId            String?         @map("party_id") @db.Uuid
+  partyName          String?         @map("party_name")
+  costCenterId       String?         @map("cost_center_id") @db.Uuid
+  projectId          String?         @map("project_id") @db.Uuid
+  fiscalYear         String          @map("fiscal_year")
+  isOpening          Boolean         @default(false) @map("is_opening")
+  isAdvance          Boolean         @default(false) @map("is_advance")
+  isCancelled        Boolean         @default(false) @map("is_cancelled")
+  remarks            String?         @db.Text
+  createdBy          String?         @map("created_by") @db.Uuid
+  createdAt          DateTime        @default(now()) @map("created_at")
+
+  organization       Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  account            ChartOfAccount  @relation(fields: [accountId], references: [id])
+  costCenter         CostCenter?     @relation(fields: [costCenterId], references: [id])
+  project            Project?        @relation(fields: [projectId], references: [id])
+  journalEntry       JournalEntry?   @relation(fields: [journalEntryId], references: [id])
+
+  @@index([organizationId, postingDate])
+  @@index([organizationId, accountId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([organizationId, partyType, partyId])
+  @@index([organizationId, costCenterId])
+  @@index([organizationId, projectId])
+  @@index([organizationId, fiscalYear])
+  @@index([organizationId, isCancelled])
+  @@index([accountId, postingDate])
+  @@map("general_ledger_entries")
+}
+
+// ============================================================================
+// STOCK LEDGER — Historical valuation tracking (ERPNext SLE equivalent)
+// ============================================================================
+
+enum ValuationMethod {
+  MOVING_AVERAGE
+  FIFO
+}
+
+model StockLedgerEntry {
+  id                   String          @id @default(uuid()) @db.Uuid
+  organizationId       String          @map("organization_id") @db.Uuid
+  postingDate          DateTime        @map("posting_date") @db.Date
+  postingTime          DateTime        @default(now()) @map("posting_time")
+  riceVarietyId        String          @map("rice_variety_id") @db.Uuid
+  warehouseId          String          @map("warehouse_id") @db.Uuid
+  actualQty            Decimal         @map("actual_qty") @db.Decimal(18, 4)
+  qtyAfterTransaction  Decimal         @map("qty_after_transaction") @db.Decimal(18, 4)
+  incomingRate         Decimal         @default(0) @map("incoming_rate") @db.Decimal(18, 4)
+  outgoingRate         Decimal         @default(0) @map("outgoing_rate") @db.Decimal(18, 4)
+  valuationRate        Decimal         @default(0) @map("valuation_rate") @db.Decimal(18, 4)
+  stockValue           Decimal         @default(0) @map("stock_value") @db.Decimal(18, 4)
+  stockValueDifference Decimal         @default(0) @map("stock_value_difference") @db.Decimal(18, 4)
+  valuationMethod      ValuationMethod @default(MOVING_AVERAGE) @map("valuation_method")
+  voucherType          String          @map("voucher_type")
+  voucherNo            String          @map("voucher_no")
+  voucherId            String          @map("voucher_id") @db.Uuid
+  batchNo              String?         @map("batch_no")
+  serialNo             String?         @map("serial_no")
+  hasGLEntry           Boolean         @default(false) @map("has_gl_entry")
+  isCancelled          Boolean         @default(false) @map("is_cancelled")
+  fiscalYear           String          @map("fiscal_year")
+  remarks              String?         @db.Text
+  createdBy            String?         @map("created_by") @db.Uuid
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  organization         Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, postingDate])
+  @@index([organizationId, riceVarietyId, warehouseId])
+  @@index([organizationId, voucherType, voucherNo])
+  @@index([riceVarietyId, warehouseId, postingDate])
+  @@index([organizationId, isCancelled])
+  @@map("stock_ledger_entries")
+}
+
+// ============================================================================
+// UNIFIED PAYMENT ENTRY (ERPNext Payment Entry equivalent)
+// ============================================================================
+
+enum PaymentEntryType {
+  RECEIVE
+  PAY
+  INTERNAL_TRANSFER
+}
+
+model PaymentEntry {
+  id                 String            @id @default(uuid()) @db.Uuid
+  organizationId     String            @map("organization_id") @db.Uuid
+  paymentNumber      String            @map("payment_number")
+  paymentType        PaymentEntryType  @map("payment_type")
+  postingDate        DateTime          @map("posting_date") @db.Date
+  partyType          String?           @map("party_type")
+  partyId            String?           @map("party_id") @db.Uuid
+  partyName          String?           @map("party_name")
+  paidFromAccountId  String            @map("paid_from_account_id") @db.Uuid
+  paidToAccountId    String            @map("paid_to_account_id") @db.Uuid
+  paidFromCurrency   String            @default("PKR") @map("paid_from_currency")
+  paidToCurrency     String            @default("PKR") @map("paid_to_currency")
+  paidAmount         Decimal           @map("paid_amount") @db.Decimal(18, 4)
+  receivedAmount     Decimal           @map("received_amount") @db.Decimal(18, 4)
+  exchangeRate       Decimal           @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  referenceNo        String?           @map("reference_no")
+  referenceDate      DateTime?         @map("reference_date") @db.Date
+  modeOfPayment      String?           @map("mode_of_payment")
+  costCenterId       String?           @map("cost_center_id") @db.Uuid
+  projectId          String?           @map("project_id") @db.Uuid
+  docStatus          Int               @default(0) @map("doc_status")
+  totalAllocatedAmount  Decimal        @default(0) @map("total_allocated_amount") @db.Decimal(18, 4)
+  unallocatedAmount  Decimal           @default(0) @map("unallocated_amount") @db.Decimal(18, 4)
+  differenceAmount   Decimal           @default(0) @map("difference_amount") @db.Decimal(18, 4)
+  writeoffAmount     Decimal           @default(0) @map("writeoff_amount") @db.Decimal(18, 4)
+  writeoffAccountId  String?           @map("writeoff_account_id") @db.Uuid
+  writeoffCostCenterId String?         @map("writeoff_cost_center_id") @db.Uuid
+  deductions         Json              @default("[]")
+  remarks            String?           @db.Text
+  letterHead         String?           @map("letter_head")
+  printHeading       String?           @map("print_heading")
+  bankAccountId      String?           @map("bank_account_id") @db.Uuid
+  submittedBy        String?           @map("submitted_by") @db.Uuid
+  submittedAt        DateTime?         @map("submitted_at")
+  cancelledBy        String?           @map("cancelled_by") @db.Uuid
+  cancelledAt        DateTime?         @map("cancelled_at")
+  cancellationReason String?           @map("cancellation_reason")
+  createdBy          String?           @map("created_by") @db.Uuid
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  organization       Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  references         PaymentEntryReference[]
+
+  @@unique([organizationId, paymentNumber])
+  @@index([organizationId, postingDate])
+  @@index([organizationId, partyType, partyId])
+  @@index([organizationId, docStatus])
+  @@map("payment_entries")
+}
+
+model PaymentEntryReference {
+  id                 String   @id @default(uuid()) @db.Uuid
+  paymentEntryId     String   @map("payment_entry_id") @db.Uuid
+  referenceDocType   String   @map("reference_doc_type")
+  referenceDocId     String   @map("reference_doc_id") @db.Uuid
+  referenceName      String   @map("reference_name")
+  dueDate            DateTime? @map("due_date") @db.Date
+  totalAmount        Decimal  @map("total_amount") @db.Decimal(18, 4)
+  outstandingAmount  Decimal  @map("outstanding_amount") @db.Decimal(18, 4)
+  allocatedAmount    Decimal  @map("allocated_amount") @db.Decimal(18, 4)
+  exchangeRate       Decimal  @default(1) @map("exchange_rate") @db.Decimal(18, 6)
+  exchangeGainLoss   Decimal  @default(0) @map("exchange_gain_loss") @db.Decimal(18, 4)
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  paymentEntry       PaymentEntry @relation(fields: [paymentEntryId], references: [id], onDelete: Cascade)
+
+  @@index([paymentEntryId])
+  @@index([referenceDocType, referenceDocId])
+  @@map("payment_entry_references")
+}
+
+// ============================================================================
+// TAX TEMPLATES (ERPNext Sales/Purchase Taxes equivalent)
+// ============================================================================
+
+enum TaxTemplateType {
+  SALES
+  PURCHASE
+  BOTH
+}
+
+model TaxTemplate {
+  id               String          @id @default(uuid()) @db.Uuid
+  organizationId   String          @map("organization_id") @db.Uuid
+  name             String
+  type             TaxTemplateType @default(BOTH)
+  isDefault        Boolean         @default(false) @map("is_default")
+  isActive         Boolean         @default(true) @map("is_active")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  organization     Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rows             TaxTemplateRow[]
+
+  @@index([organizationId])
+  @@map("tax_templates")
+}
+
+model TaxTemplateRow {
+  id               String   @id @default(uuid()) @db.Uuid
+  taxTemplateId    String   @map("tax_template_id") @db.Uuid
+  chargeType       String   @map("charge_type")
+  accountId        String?  @map("account_id") @db.Uuid
+  description      String
+  rate             Decimal  @default(0) @db.Decimal(5, 2)
+  amount           Decimal  @default(0) @db.Decimal(18, 4)
+  taxAmount        Decimal  @default(0) @map("tax_amount") @db.Decimal(18, 4)
+  total            Decimal  @default(0) @db.Decimal(18, 4)
+  costCenterId     String?  @map("cost_center_id") @db.Uuid
+  addDeductTax     String   @default("ADD") @map("add_deduct_tax")
+  included         Boolean  @default(false)
+  sortOrder        Int      @default(0) @map("sort_order")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  taxTemplate      TaxTemplate @relation(fields: [taxTemplateId], references: [id], onDelete: Cascade)
+
+  @@index([taxTemplateId])
+  @@map("tax_template_rows")
+}
+
+// ============================================================================
+// ACCOUNTING PERIODS (ERPNext Accounting Period — controls posting windows)
+// ============================================================================
+
+model AccountingPeriod {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  periodName       String   @map("period_name")
+  startDate        DateTime @map("start_date") @db.Date
+  endDate          DateTime @map("end_date") @db.Date
+  isClosed         Boolean  @default(false) @map("is_closed")
+  closedDocTypes   String[] @map("closed_doc_types")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, startDate, endDate])
+  @@map("accounting_periods")
 }
 
