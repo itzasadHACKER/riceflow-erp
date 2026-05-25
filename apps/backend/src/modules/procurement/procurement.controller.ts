@@ -32,7 +32,9 @@ import {
   CreatePaddyPurchaseDto,
   CreatePurchaseRateDto,
   CreateQualityTestDto,
+  CreatePurchaseOrderDto,
 } from './dto/procurement.dto';
+import { CreateGoodsReceiptDto } from '../inventory/dto/inventory.dto';
 
 @ApiTags('procurement')
 @Controller('procurement')
@@ -295,6 +297,85 @@ export class ProcurementController {
       purchaseId,
     );
     return createResponse(tests);
+  }
+
+  // ===== PURCHASE ORDERS =====
+
+  @Post('purchase-orders')
+  @ApiOperation({ summary: 'Create purchase order' })
+  async createPurchaseOrder(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreatePurchaseOrderDto,
+  ) {
+    const order = await this.procurementService.createPurchaseOrder(
+      user.organizationId,
+      user.sub,
+      dto,
+    );
+    return createResponse(order);
+  }
+
+  @Get('purchase-orders')
+  @ApiOperation({ summary: 'List purchase orders' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async listPurchaseOrders(
+    @CurrentUser() user: JwtPayload,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.procurementService.listPurchaseOrders(
+      user.organizationId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+    return createPaginatedResponse(result.data, result.total, result.page, result.limit);
+  }
+
+  @Get('purchase-orders/:id')
+  @ApiOperation({ summary: 'Get purchase order by ID' })
+  async getPurchaseOrder(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    const order = await this.procurementService.getPurchaseOrder(
+      user.organizationId,
+      id,
+    );
+    return createResponse(order);
+  }
+
+  // ===== GOODS RECEIPTS =====
+
+  @Post('goods-receipts')
+  @ApiOperation({ summary: 'Create goods receipt (GRN)' })
+  async createGoodsReceipt(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateGoodsReceiptDto,
+  ) {
+    const receipt = await this.procurementService.createGoodsReceipt(
+      user.organizationId,
+      user.sub,
+      dto,
+    );
+    return createResponse(receipt);
+  }
+
+  @Get('goods-receipts')
+  @ApiOperation({ summary: 'List goods receipts' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async listGoodsReceipts(
+    @CurrentUser() user: JwtPayload,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const result = await this.procurementService.listGoodsReceipts(
+      user.organizationId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
+    return createPaginatedResponse(result.data, result.total, result.page, result.limit);
   }
 
   // ===== SUMMARY =====

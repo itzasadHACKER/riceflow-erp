@@ -137,37 +137,116 @@ export class SalesService {
       const orderNumber = await this.generateOrderNumber(tx, organizationId);
 
       let totalAmount = 0;
-      const itemsData = dto.items.map((item) => {
-        const amount = item.quantity * item.rate;
+      let totalQty = 0;
+      let totalTaxAmount = 0;
+      const exchangeRate = dto.exchangeRate ?? 1;
+
+      const itemsData = dto.items.map((item, idx) => {
+        const qty = item.quantity;
+        const rate = item.rate;
+        const amount = qty * rate;
+        const conversionFactor = item.conversionFactor ?? 1;
+        const stockQty = qty * conversionFactor;
+        const baseRate = rate * exchangeRate;
+        const baseAmount = amount * exchangeRate;
+        const discPct = item.discountPercentage ?? 0;
+        const discAmt = item.discountAmount ?? (discPct > 0 ? amount * discPct / 100 : 0);
+        const afterDiscount = amount - discAmt;
+        const taxRate = item.taxRate ?? 0;
+        const taxAmt = afterDiscount * taxRate / 100;
+        const netAmt = afterDiscount + taxAmt;
+        const netRate = qty > 0 ? netAmt / qty : 0;
+
         totalAmount += amount;
+        totalQty += qty;
+        totalTaxAmount += taxAmt;
+
         return {
           riceVarietyId: item.riceVarietyId,
-          quantity: item.quantity,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          description: item.description,
+          quantity: qty,
+          stockQty,
           unit: item.unit ?? 'KG',
-          rate: item.rate,
+          stockUom: item.stockUom ?? item.unit ?? 'KG',
+          conversionFactor,
+          priceListRate: item.priceListRate ?? rate,
+          rate,
+          baseRate,
           amount,
+          baseAmount,
+          discountPercentage: discPct,
+          discountAmount: discAmt,
+          taxRate,
+          taxAmount: taxAmt,
+          netAmount: netAmt,
+          netRate,
           lotNumber: item.lotNumber,
+          batchNo: item.batchNo,
           warehouseId: item.warehouseId,
+          costCenterId: item.costCenterId,
+          projectId: item.projectId,
+          deliveryDate: item.deliveryDate ? new Date(item.deliveryDate) : null,
+          bagCount: item.bagCount,
+          bagWeight: item.bagWeight,
+          idx,
         };
       });
 
       const discount = dto.discount ?? 0;
-      const taxAmount = dto.taxAmount ?? 0;
-      const netAmount = totalAmount - discount + taxAmount;
+      const discountPct = dto.discountPercentage ?? 0;
+      const additionalDiscount = discountPct > 0 ? totalAmount * discountPct / 100 : discount;
+      const taxAmount = dto.taxAmount ?? totalTaxAmount;
+      const netTotal = totalAmount - additionalDiscount;
+      const grandTotal = netTotal + taxAmount;
+      const roundingAdj = Math.round(grandTotal) - grandTotal;
+      const roundedTotal = grandTotal + roundingAdj;
+      const netAmount = roundedTotal;
 
       return tx.salesOrder.create({
         data: {
           organizationId,
           branchId: dto.branchId,
           orderNumber,
+          namingSeries: dto.namingSeries,
           date: new Date(dto.date),
-          customerId: dto.customerId,
-          totalAmount,
-          discount,
-          taxAmount,
-          netAmount,
           deliveryDate: dto.deliveryDate ? new Date(dto.deliveryDate) : null,
+          customerId: dto.customerId,
+          customerName: dto.customerName,
+          customerAddress: dto.customerAddress,
+          contactPerson: dto.contactPerson,
+          contactEmail: dto.contactEmail,
+          contactMobile: dto.contactMobile,
+          shippingAddress: dto.shippingAddress,
+          currency: dto.currency ?? 'PKR',
+          exchangeRate,
+          priceListId: dto.priceListId,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
+          totalQty,
+          totalAmount,
+          netTotal,
+          discountPercentage: discountPct,
+          discount: additionalDiscount,
+          applyDiscountOn: dto.applyDiscountOn,
+          taxTemplateId: dto.taxTemplateId,
+          taxesAndCharges: dto.taxesAndCharges ?? [],
+          taxAmount,
+          grandTotal,
+          roundingAdjustment: roundingAdj,
+          roundedTotal,
+          inWords: dto.inWords,
+          netAmount,
+          salespersonId: dto.salespersonId,
+          commissionRate: dto.commissionRate ?? 0,
+          totalCommission: dto.commissionRate ? (netAmount * dto.commissionRate / 100) : 0,
+          paymentTerms: dto.paymentTerms,
+          paymentTermsDays: dto.paymentTermsDays,
+          letterHead: dto.letterHead,
+          termsAndConditions: dto.termsAndConditions,
           notes: dto.notes,
+          remarks: dto.remarks,
           createdBy: userId,
           items: { create: itemsData },
         },
@@ -305,24 +384,137 @@ export class SalesService {
         tx,
         organizationId,
       );
-      const netAmount =
-        dto.totalAmount - (dto.discount ?? 0) + (dto.taxAmount ?? 0);
+
+      const exchangeRate = dto.exchangeRate ?? 1;
+      let totalAmount = 0;
+      let totalQty = 0;
+      let totalTaxAmount = 0;
+
+      const itemsData = (dto.items ?? []).map((item, idx) => {
+        const qty = item.quantity;
+        const rate = item.rate;
+        const amount = qty * rate;
+        const conversionFactor = item.conversionFactor ?? 1;
+        const stockQty = qty * conversionFactor;
+        const baseRate = rate * exchangeRate;
+        const baseAmount = amount * exchangeRate;
+        const discPct = item.discountPercentage ?? 0;
+        const discAmt = item.discountAmount ?? (discPct > 0 ? amount * discPct / 100 : 0);
+        const afterDiscount = amount - discAmt;
+        const taxRate = item.taxRate ?? 0;
+        const taxAmt = afterDiscount * taxRate / 100;
+        const netAmt = afterDiscount + taxAmt;
+        const netRate = qty > 0 ? netAmt / qty : 0;
+
+        totalAmount += amount;
+        totalQty += qty;
+        totalTaxAmount += taxAmt;
+
+        return {
+          riceVarietyId: item.riceVarietyId,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          description: item.itemName ?? '',
+          quantity: qty,
+          stockQty,
+          unit: item.unit ?? 'KG',
+          stockUom: item.stockUom ?? item.unit ?? 'KG',
+          conversionFactor,
+          priceListRate: item.priceListRate ?? rate,
+          rate,
+          baseRate,
+          amount,
+          baseAmount,
+          discountPercentage: discPct,
+          discountAmount: discAmt,
+          taxRate,
+          taxAmount: taxAmt,
+          netAmount: netAmt,
+          netRate,
+          warehouseId: item.warehouseId,
+          costCenterId: item.costCenterId,
+          projectId: item.projectId,
+          incomeAccountId: item.incomeAccountId,
+          expenseAccountId: item.expenseAccountId,
+          lotNumber: item.lotNumber,
+          batchNo: item.batchNo,
+          serialNo: item.serialNo,
+          salesOrderItemId: item.salesOrderItemId,
+          idx,
+        };
+      });
+
+      if (totalAmount === 0 && dto.totalAmount) {
+        totalAmount = dto.totalAmount;
+      }
+
+      const discount = dto.discount ?? 0;
+      const discountPct = dto.discountPercentage ?? 0;
+      const additionalDiscount = discountPct > 0 ? totalAmount * discountPct / 100 : discount;
+      const taxAmount = dto.taxAmount ?? totalTaxAmount;
+      const netTotal = totalAmount - additionalDiscount;
+      const grandTotal = netTotal + taxAmount;
+      const writeOff = dto.writeOffAmount ?? 0;
+      const roundingAdj = Math.round(grandTotal - writeOff) - (grandTotal - writeOff);
+      const roundedTotal = grandTotal - writeOff + roundingAdj;
+      const netAmount = roundedTotal;
+      const outstandingAmount = netAmount;
 
       return tx.salesInvoice.create({
         data: {
           organizationId,
           invoiceNumber,
+          namingSeries: dto.namingSeries,
           date: new Date(dto.date),
-          salesOrderId: dto.salesOrderId,
-          customerId: dto.customerId,
-          totalAmount: dto.totalAmount,
-          discount: dto.discount ?? 0,
-          taxAmount: dto.taxAmount ?? 0,
-          netAmount,
+          postingTime: dto.postingTime,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          isReturn: dto.isReturn ?? false,
+          returnAgainst: dto.returnAgainst,
+          salesOrderId: dto.salesOrderId,
+          deliveryChallanId: dto.deliveryChallanId,
+          customerId: dto.customerId,
+          customerName: dto.customerName,
+          customerAddress: dto.customerAddress,
+          contactPerson: dto.contactPerson,
+          contactEmail: dto.contactEmail,
+          contactMobile: dto.contactMobile,
+          shippingAddress: dto.shippingAddress,
+          currency: dto.currency ?? 'PKR',
+          exchangeRate,
+          priceListId: dto.priceListId,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
+          totalQty,
+          totalAmount,
+          netTotal,
+          discountPercentage: discountPct,
+          discount: additionalDiscount,
+          applyDiscountOn: dto.applyDiscountOn,
+          taxTemplateId: dto.taxTemplateId,
+          taxesAndCharges: dto.taxesAndCharges ?? [],
+          taxAmount,
+          grandTotal,
+          roundingAdjustment: roundingAdj,
+          roundedTotal,
+          netAmount,
+          outstandingAmount,
+          paidAmount: 0,
+          writeOffAmount: writeOff,
+          writeOffAccountId: dto.writeOffAccountId,
+          debitToId: dto.debitToId,
+          paymentTerms: dto.paymentTerms,
+          paymentTermsDays: dto.paymentTermsDays,
+          salespersonId: dto.salespersonId,
+          commissionRate: dto.commissionRate ?? 0,
+          totalCommission: dto.commissionRate ? (netAmount * dto.commissionRate / 100) : 0,
+          letterHead: dto.letterHead,
+          termsAndConditions: dto.termsAndConditions,
+          remarks: dto.remarks,
+          isOpeningEntry: dto.isOpeningEntry ?? false,
           createdBy: userId,
+          items: itemsData.length > 0 ? { create: itemsData } : undefined,
         },
-        include: { customer: true, salesOrder: true },
+        include: { customer: true, salesOrder: true, items: true },
       });
     });
   }
@@ -500,15 +692,31 @@ export class SalesService {
         data: {
           organizationId,
           challanNumber,
+          namingSeries: dto.namingSeries,
           date: new Date(dto.date),
           salesOrderId: dto.salesOrderId,
+          salesInvoiceId: dto.salesInvoiceId,
           customerId: dto.customerId,
+          customerName: dto.customerName,
+          customerAddress: dto.customerAddress,
+          shippingAddress: dto.shippingAddress,
+          contactPerson: dto.contactPerson,
+          contactEmail: dto.contactEmail,
           vehicleId: dto.vehicleId,
+          vehicleNumber: dto.vehicleNumber,
           driverName: dto.driverName,
           driverPhone: dto.driverPhone,
+          transporterName: dto.transporterName,
+          lrNo: dto.lrNo,
+          lrDate: dto.lrDate ? new Date(dto.lrDate) : null,
           dispatchFromWarehouseId: dto.dispatchFromWarehouseId,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
           receiverName: dto.receiverName,
+          receiverPhone: dto.receiverPhone,
+          termsAndConditions: dto.termsAndConditions,
           notes: dto.notes,
+          remarks: dto.remarks,
           createdBy: userId,
         },
         include: { customer: true, vehicle: true, warehouse: true },

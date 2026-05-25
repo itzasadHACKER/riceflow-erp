@@ -71,20 +71,62 @@ interface BardanaDto {
 }
 
 interface PurchaseInvoiceItemDto {
+  riceVarietyId?: string;
+  itemCode?: string;
+  itemName?: string;
   description: string;
   quantity: number;
   unit?: string;
+  stockUom?: string;
+  conversionFactor?: number;
+  priceListRate?: number;
   rate: number;
+  discountPercentage?: number;
+  discountAmount?: number;
   taxRate?: number;
   expenseAccountId?: string;
+  costCenterId?: string;
+  projectId?: string;
+  warehouseId?: string;
+  lotNumber?: string;
+  batchNo?: string;
+  serialNo?: string;
+  bagCount?: number;
+  bagWeight?: number;
 }
 
 interface CreatePurchaseInvoiceDto {
   date: string;
+  postingTime?: string;
+  namingSeries?: string;
+  branchId?: string;
   supplierId: string;
+  supplierName?: string;
+  supplierAddress?: string;
+  contactPerson?: string;
+  contactEmail?: string;
+  shippingAddress?: string;
   vendorInvoiceNo?: string;
+  currency?: string;
+  exchangeRate?: number;
+  priceListId?: string;
+  costCenterId?: string;
+  projectId?: string;
   dueDate?: string;
   discount?: number;
+  discountPercentage?: number;
+  applyDiscountOn?: string;
+  taxTemplateId?: string;
+  taxesAndCharges?: any;
+  writeOffAmount?: number;
+  creditToId?: string;
+  paymentTerms?: string;
+  paymentTermsDays?: number;
+  additionalCosts?: any;
+  termsAndConditions?: string;
+  remarks?: string;
+  isReturn?: boolean;
+  returnAgainst?: string;
   items: PurchaseInvoiceItemDto[];
   notes?: string;
 }
@@ -1022,49 +1064,118 @@ export class Phase1CoreService {
     return this.prisma.$transaction(async (tx) => {
       const count = await tx.purchaseInvoice.count({ where: { organizationId } });
       const invoiceNumber = `PI-${String(count + 1).padStart(6, '0')}`;
+      const exchangeRate = new Prisma.Decimal(dto.exchangeRate || 1);
 
       let totalAmount = new Prisma.Decimal(0);
       let totalTax = new Prisma.Decimal(0);
+      let totalQty = new Prisma.Decimal(0);
 
-      const itemsData = dto.items.map((item) => {
+      const itemsData = dto.items.map((item, idx) => {
         const qty = new Prisma.Decimal(item.quantity);
         const rate = new Prisma.Decimal(item.rate);
         const amount = qty.mul(rate);
+        const convFactor = new Prisma.Decimal(item.conversionFactor || 1);
+        const stockQty = qty.mul(convFactor);
+        const baseRate = rate.mul(exchangeRate);
+        const baseAmount = amount.mul(exchangeRate);
+        const discPct = new Prisma.Decimal(item.discountPercentage || 0);
+        const discAmt = item.discountAmount ? new Prisma.Decimal(item.discountAmount) : (discPct.gt(0) ? amount.mul(discPct).div(100) : new Prisma.Decimal(0));
+        const afterDiscount = amount.sub(discAmt);
         const taxRate = new Prisma.Decimal(item.taxRate || 0);
-        const taxAmount = amount.mul(taxRate).div(100);
-        const netAmount = amount.add(taxAmount);
+        const taxAmount = afterDiscount.mul(taxRate).div(100);
+        const netAmount = afterDiscount.add(taxAmount);
+        const netRate = qty.gt(0) ? netAmount.div(qty) : new Prisma.Decimal(0);
 
         totalAmount = totalAmount.add(amount);
         totalTax = totalTax.add(taxAmount);
+        totalQty = totalQty.add(qty);
 
         return {
+          riceVarietyId: item.riceVarietyId || null,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
           description: item.description,
           quantity: qty,
+          stockQty,
           unit: item.unit || 'PCS',
+          stockUom: item.stockUom || item.unit || 'PCS',
+          conversionFactor: convFactor,
+          priceListRate: item.priceListRate ? new Prisma.Decimal(item.priceListRate) : rate,
           rate,
+          baseRate,
           amount,
+          baseAmount,
+          discountPercentage: discPct,
+          discountAmount: discAmt,
           taxRate,
           taxAmount,
           netAmount,
+          netRate,
           expenseAccountId: item.expenseAccountId || null,
+          costCenterId: item.costCenterId || null,
+          projectId: item.projectId || null,
+          warehouseId: item.warehouseId || null,
+          lotNumber: item.lotNumber,
+          batchNo: item.batchNo,
+          serialNo: item.serialNo,
+          bagCount: item.bagCount,
+          bagWeight: item.bagWeight ? new Prisma.Decimal(item.bagWeight) : null,
+          idx,
         };
       });
 
       const discount = new Prisma.Decimal(dto.discount || 0);
-      const netAmount = totalAmount.sub(discount).add(totalTax);
+      const discPct = new Prisma.Decimal(dto.discountPercentage || 0);
+      const additionalDiscount = discPct.gt(0) ? totalAmount.mul(discPct).div(100) : discount;
+      const netTotal = totalAmount.sub(additionalDiscount);
+      const grandTotal = netTotal.add(totalTax);
+      const writeOff = new Prisma.Decimal(dto.writeOffAmount || 0);
+      const netAmount = grandTotal.sub(writeOff);
+      const outstandingAmount = netAmount;
 
       return tx.purchaseInvoice.create({
         data: {
           organizationId,
+          branchId: dto.branchId || null,
           invoiceNumber,
+          namingSeries: dto.namingSeries,
           vendorInvoiceNo: dto.vendorInvoiceNo || null,
           date: new Date(dto.date),
-          supplierId: dto.supplierId,
-          totalAmount,
-          discount,
-          taxAmount: totalTax,
-          netAmount,
+          postingTime: dto.postingTime,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+          isReturn: dto.isReturn ?? false,
+          returnAgainst: dto.returnAgainst,
+          supplierId: dto.supplierId,
+          supplierName: dto.supplierName ?? supplier.name,
+          supplierAddress: dto.supplierAddress,
+          contactPerson: dto.contactPerson,
+          contactEmail: dto.contactEmail,
+          shippingAddress: dto.shippingAddress,
+          currency: dto.currency ?? 'PKR',
+          exchangeRate,
+          priceListId: dto.priceListId || null,
+          costCenterId: dto.costCenterId || null,
+          projectId: dto.projectId || null,
+          totalQty,
+          totalAmount,
+          netTotal,
+          discountPercentage: discPct,
+          discount: additionalDiscount,
+          applyDiscountOn: dto.applyDiscountOn,
+          taxTemplateId: dto.taxTemplateId || null,
+          taxesAndCharges: dto.taxesAndCharges ?? [],
+          taxAmount: totalTax,
+          grandTotal,
+          netAmount,
+          outstandingAmount,
+          paidAmount: 0,
+          writeOffAmount: writeOff,
+          creditToId: dto.creditToId || null,
+          paymentTerms: dto.paymentTerms,
+          paymentTermsDays: dto.paymentTermsDays,
+          additionalCosts: dto.additionalCosts ?? [],
+          termsAndConditions: dto.termsAndConditions,
+          remarks: dto.remarks,
           notes: dto.notes || null,
           createdBy: userId,
           items: { create: itemsData },

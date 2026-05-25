@@ -645,6 +645,241 @@ export class CreatePaddyPurchaseDto {
 }
 
 // ============================================================================
+// PURCHASE ORDER DTOs
+// ============================================================================
+
+export class PurchaseOrderItemDto {
+  @ApiProperty()
+  @IsUUID()
+  riceVarietyId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  itemCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  itemName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @ApiProperty({ example: 1000 })
+  @IsNumber()
+  @Min(0.01)
+  quantity: number;
+
+  @ApiPropertyOptional({ default: 'KG' })
+  @IsOptional()
+  @IsString()
+  unit?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  stockUom?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  conversionFactor?: number;
+
+  @ApiProperty({ example: 95 })
+  @IsNumber()
+  @Min(0)
+  rate: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  priceListRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountPercentage?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  taxRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  warehouseId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  expenseAccountId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedDeliveryDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  bagCount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  bagWeight?: number;
+}
+
+export class CreatePurchaseOrderDto {
+  @ApiProperty()
+  @IsUUID()
+  supplierId: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  supplierAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  namingSeries?: string;
+
+  @ApiProperty({ example: '2024-10-20' })
+  @IsDateString()
+  date: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  exchangeRate?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  costCenterId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  projectId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  priceListId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  discountPercentage?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  applyDiscountOn?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID()
+  taxTemplateId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  taxesAndCharges?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  taxAmount?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  expectedDate?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  paymentTerms?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsNumber()
+  paymentTermsDays?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  shippingAddress?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  termsAndConditions?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  letterHead?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  remarks?: string;
+
+  @ApiProperty({ type: [PurchaseOrderItemDto] })
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PurchaseOrderItemDto)
+  items: PurchaseOrderItemDto[];
+}
+
+// ============================================================================
 // PURCHASE RATE DTOs
 // ============================================================================
 

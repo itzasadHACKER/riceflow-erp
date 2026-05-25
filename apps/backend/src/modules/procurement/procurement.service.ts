@@ -15,6 +15,7 @@ import {
   CreatePaddyPurchaseDto,
   CreatePurchaseRateDto,
   CreateQualityTestDto,
+  CreatePurchaseOrderDto,
 } from './dto/procurement.dto';
 import { GeneralLedgerService } from '../accounting-engine/general-ledger.service';
 import { StockLedgerService } from '../accounting-engine/stock-ledger.service';
@@ -223,6 +224,17 @@ export class ProcurementService {
         organizationId,
       );
 
+      const bardanaAmt = (dto as any).bardanaAmount ?? 0;
+      const labourChg = (dto as any).labourCharges ?? 0;
+      const transportChg = (dto as any).transportCharges ?? 0;
+      const commRate = (dto as any).commissionRate ?? 0;
+      const commAmt = (dto as any).commissionAmount ?? (commRate > 0 ? grossAmount * commRate / 100 : 0);
+      const taxAmt = (dto as any).taxAmount ?? 0;
+      const whtAmt = (dto as any).withholdingTaxAmount ?? 0;
+      const totalCharges = bardanaAmt + labourChg + transportChg + commAmt;
+      const finalNetAmount = grossAmount + totalCharges + taxAmt - whtAmt;
+      const roundingAdj = Math.round(finalNetAmount) - finalNetAmount;
+
       const purchase = await tx.paddyPurchase.create({
         data: {
           organizationId,
@@ -232,24 +244,49 @@ export class ProcurementService {
           supplierId: dto.supplierId,
           riceVarietyId: dto.riceVarietyId,
           brokerId: dto.brokerId,
+          namingSeries: (dto as any).namingSeries,
+          costCenterId: (dto as any).costCenterId,
+          projectId: (dto as any).projectId,
+          warehouseId: (dto as any).warehouseId,
+          currency: (dto as any).currency ?? 'PKR',
+          exchangeRate: (dto as any).exchangeRate ?? 1,
+          weighbridgeSlipId: (dto as any).weighbridgeSlipId,
           grossWeight: dto.grossWeight,
           tareWeight: dto.tareWeight ?? 0,
           netWeight,
           moisturePercentage: dto.moisturePercentage,
+          brokenPercentage: (dto as any).brokenPercentage,
+          foreignMatter: (dto as any).foreignMatter,
           deductionPercentage: dto.deductionPercentage,
+          deductionWeight: moistureDeduction + percentDeduction,
           finalWeight,
           ratePerUnit: dto.ratePerUnit,
           grossAmount,
+          bardanaAmount: bardanaAmt,
+          labourCharges: labourChg,
+          transportCharges: transportChg,
+          commissionAmount: commAmt,
+          commissionRate: commRate,
           deductions: {
             moisture: moistureDeduction,
             percentage: percentDeduction,
           },
-          netAmount,
+          taxAmount: taxAmt,
+          withholdingTaxAmount: whtAmt,
+          roundingAdjustment: roundingAdj,
+          netAmount: finalNetAmount + roundingAdj,
+          outstandingAmount: finalNetAmount + roundingAdj,
           qualityGrade: dto.qualityGrade,
           lotNumber: dto.lotNumber,
+          bagCount: (dto as any).bagCount,
+          bagWeight: (dto as any).bagWeight,
           vehicleNumber: dto.vehicleNumber,
+          driverName: (dto as any).driverName,
+          driverPhone: (dto as any).driverPhone,
           gatePassNumber: dto.gatePassNumber,
+          termsAndConditions: (dto as any).termsAndConditions,
           notes: dto.notes,
+          remarks: (dto as any).remarks,
           createdBy: userId,
         },
         include: {
@@ -599,6 +636,277 @@ export class ProcurementService {
       byVariety: Object.values(byVariety),
       bySupplier: Object.values(bySupplier),
     };
+  }
+
+  // ===== PURCHASE ORDERS =====
+
+  async createPurchaseOrder(
+    organizationId: string,
+    userId: string,
+    dto: CreatePurchaseOrderDto,
+  ) {
+    await this.getSupplier(organizationId, dto.supplierId);
+
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Purchase order must have at least one item');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const count = await tx.purchaseOrder.count({ where: { organizationId } });
+      const orderNumber = `PO-${String(count + 1).padStart(6, '0')}`;
+      const exchangeRate = dto.exchangeRate ?? 1;
+
+      let totalAmount = 0;
+      let totalQty = 0;
+      let totalTaxAmount = 0;
+
+      const itemsData = dto.items.map((item, idx) => {
+        const qty = item.quantity;
+        const rate = item.rate;
+        const amount = qty * rate;
+        const conversionFactor = item.conversionFactor ?? 1;
+        const stockQty = qty * conversionFactor;
+        const baseRate = rate * exchangeRate;
+        const baseAmount = amount * exchangeRate;
+        const discPct = item.discountPercentage ?? 0;
+        const discAmt = item.discountAmount ?? (discPct > 0 ? amount * discPct / 100 : 0);
+        const afterDiscount = amount - discAmt;
+        const taxRate = item.taxRate ?? 0;
+        const taxAmt = afterDiscount * taxRate / 100;
+        const netAmt = afterDiscount + taxAmt;
+        const netRate = qty > 0 ? netAmt / qty : 0;
+
+        totalAmount += amount;
+        totalQty += qty;
+        totalTaxAmount += taxAmt;
+
+        return {
+          riceVarietyId: item.riceVarietyId,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          description: item.description,
+          quantity: qty,
+          stockQty,
+          unit: item.unit ?? 'KG',
+          stockUom: item.stockUom ?? item.unit ?? 'KG',
+          conversionFactor,
+          priceListRate: item.priceListRate ?? rate,
+          rate,
+          baseRate,
+          amount,
+          baseAmount,
+          discountPercentage: discPct,
+          discountAmount: discAmt,
+          taxRate,
+          taxAmount: taxAmt,
+          netAmount: netAmt,
+          netRate,
+          warehouseId: item.warehouseId,
+          costCenterId: item.costCenterId,
+          projectId: item.projectId,
+          expenseAccountId: item.expenseAccountId,
+          expectedDeliveryDate: item.expectedDeliveryDate ? new Date(item.expectedDeliveryDate) : null,
+          idx,
+        };
+      });
+
+      const discount = dto.discount ?? 0;
+      const discountPct = dto.discountPercentage ?? 0;
+      const additionalDiscount = discountPct > 0 ? totalAmount * discountPct / 100 : discount;
+      const taxAmount = dto.taxAmount ?? totalTaxAmount;
+      const netTotal = totalAmount - additionalDiscount;
+      const grandTotal = netTotal + taxAmount;
+      const roundingAdj = Math.round(grandTotal) - grandTotal;
+      const roundedTotal = grandTotal + roundingAdj;
+      const netAmount = roundedTotal;
+
+      return tx.purchaseOrder.create({
+        data: {
+          organizationId,
+          orderNumber,
+          namingSeries: dto.namingSeries,
+          date: new Date(dto.date),
+          supplierId: dto.supplierId,
+          supplierName: dto.supplierName,
+          supplierAddress: dto.supplierAddress,
+          branchId: dto.branchId,
+          currency: dto.currency ?? 'PKR',
+          exchangeRate,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
+          priceListId: dto.priceListId,
+          totalQty,
+          totalAmount,
+          netTotal,
+          discountPercentage: discountPct,
+          discount: additionalDiscount,
+          taxTemplateId: dto.taxTemplateId,
+          taxesAndCharges: dto.taxesAndCharges ?? [],
+          taxAmount,
+          grandTotal,
+          roundingAdjustment: roundingAdj,
+          roundedTotal,
+          netAmount,
+          expectedDate: dto.expectedDate ? new Date(dto.expectedDate) : null,
+          paymentTerms: dto.paymentTerms,
+          paymentTermsDays: dto.paymentTermsDays,
+          shippingAddress: dto.shippingAddress,
+          termsAndConditions: dto.termsAndConditions,
+          letterHead: dto.letterHead,
+          narration: dto.notes,
+          createdBy: userId,
+          items: { create: itemsData },
+        },
+        include: {
+          supplier: true,
+          items: { include: { riceVariety: true } },
+        },
+      });
+    });
+  }
+
+  async listPurchaseOrders(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const [data, total] = await Promise.all([
+      this.prisma.purchaseOrder.findMany({
+        where: { organizationId },
+        include: { supplier: true, items: { include: { riceVariety: true } } },
+        orderBy: { date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.purchaseOrder.count({ where: { organizationId } }),
+    ]);
+    return { data, total, page, limit };
+  }
+
+  async getPurchaseOrder(organizationId: string, id: string) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { id, organizationId },
+      include: { supplier: true, items: { include: { riceVariety: true } } },
+    });
+    if (!order) throw new NotFoundException('Purchase order not found');
+    return order;
+  }
+
+  // ===== GOODS RECEIPT =====
+
+  async createGoodsReceipt(
+    organizationId: string,
+    userId: string,
+    dto: any,
+  ) {
+    if (!dto.items || dto.items.length === 0) {
+      throw new BadRequestException('Goods receipt must have at least one item');
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const count = await tx.goodsReceipt.count({ where: { organizationId } });
+      const receiptNumber = `GRN-${String(count + 1).padStart(6, '0')}`;
+      const exchangeRate = dto.exchangeRate ?? 1;
+
+      let totalQty = 0;
+      let totalAmount = 0;
+
+      const itemsData = dto.items.map((item: any, idx: number) => {
+        const qty = item.quantity;
+        const rate = item.rate ?? 0;
+        const amount = qty * rate;
+        const conversionFactor = item.conversionFactor ?? 1;
+        const stockQty = qty * conversionFactor;
+        const valuationRate = item.valuationRate ?? rate;
+
+        totalQty += qty;
+        totalAmount += amount;
+
+        return {
+          riceVarietyId: item.riceVarietyId,
+          itemCode: item.itemCode,
+          itemName: item.itemName,
+          description: item.description ?? '',
+          quantity: qty,
+          receivedQty: qty,
+          stockQty,
+          unit: item.unit ?? 'KG',
+          stockUom: item.stockUom ?? item.unit ?? 'KG',
+          conversionFactor,
+          rate,
+          amount,
+          valuationRate,
+          acceptedQty: item.acceptedQty ?? qty,
+          rejectedQty: item.rejectedQty ?? 0,
+          warehouseId: item.warehouseId ?? dto.warehouseId,
+          rejectedWarehouseId: item.rejectedWarehouseId ?? dto.rejectedWarehouseId,
+          costCenterId: item.costCenterId ?? dto.costCenterId,
+          projectId: item.projectId ?? dto.projectId,
+          batchNo: item.batchNo,
+          serialNo: item.serialNo,
+          lotNumber: item.lotNumber,
+          purchaseOrderItemId: item.purchaseOrderItemId,
+          idx,
+        };
+      });
+
+      return tx.goodsReceipt.create({
+        data: {
+          organizationId,
+          receiptNumber,
+          namingSeries: dto.namingSeries,
+          date: new Date(dto.date),
+          postingTime: dto.postingTime,
+          supplierId: dto.supplierId,
+          supplierName: dto.supplierName,
+          supplierAddress: dto.supplierAddress,
+          purchaseOrderId: dto.purchaseOrderId,
+          warehouseId: dto.warehouseId,
+          rejectedWarehouseId: dto.rejectedWarehouseId,
+          costCenterId: dto.costCenterId,
+          projectId: dto.projectId,
+          currency: dto.currency ?? 'PKR',
+          exchangeRate,
+          isReturn: dto.isReturn ?? false,
+          returnAgainst: dto.returnAgainst,
+          totalQty,
+          totalQuantity: totalQty,
+          totalNetWeight: totalAmount,
+          vehicleNumber: dto.vehicleNumber,
+          driverName: dto.driverName,
+          transporterName: dto.transporterName,
+          lrNo: dto.lrNo,
+          lrDate: dto.lrDate ? new Date(dto.lrDate) : null,
+          termsAndConditions: dto.termsAndConditions,
+          notes: dto.notes,
+          remarks: dto.remarks,
+          createdBy: userId,
+          items: { create: itemsData },
+        },
+        include: {
+          supplier: true,
+          items: { include: { riceVariety: true } },
+        },
+      });
+    });
+  }
+
+  async listGoodsReceipts(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 20,
+  ) {
+    const [data, total] = await Promise.all([
+      this.prisma.goodsReceipt.findMany({
+        where: { organizationId },
+        include: { supplier: true, items: { include: { riceVariety: true } } },
+        orderBy: { date: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.goodsReceipt.count({ where: { organizationId } }),
+    ]);
+    return { data, total, page, limit };
   }
 
   private async generatePurchaseNumber(

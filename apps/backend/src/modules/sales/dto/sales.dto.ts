@@ -525,6 +525,11 @@ export class CreateSalesOrderDto {
   @IsString()
   notes?: string;
 
+  @ApiPropertyOptional({ description: 'Total amount in words' })
+  @IsOptional()
+  @IsString()
+  inWords?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -595,6 +600,11 @@ export class SalesInvoiceItemDto {
   @IsOptional()
   @IsNumber()
   discountAmount?: number;
+
+  @ApiPropertyOptional({ description: 'Tax rate percentage' })
+  @IsOptional()
+  @IsNumber()
+  taxRate?: number;
 
   @ApiPropertyOptional({ description: 'Margin type: Percentage or Amount' })
   @IsOptional()
