@@ -1,4 +1,4 @@
-# 🌾 RiceFlow ERP
+# 🌾 Grainix ERP
 
 **Enterprise Rice Industry Management Platform**
 

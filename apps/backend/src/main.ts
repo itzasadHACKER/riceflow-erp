@@ -39,8 +39,8 @@ async function bootstrap() {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('RiceFlow ERP API')
-    .setDescription('Enterprise Rice Industry Management Platform API')
+    .setTitle('Grainix ERP API')
+    .setDescription('Enterprise Rice Industry Management Platform API | Powered by Asad Ali 0308-4420406')
     .setVersion('0.1.0')
     .addBearerAuth()
     .addTag('auth', 'Authentication & Authorization')
@@ -53,7 +53,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   await app.listen(port);
-  console.log(`🌾 RiceFlow ERP API running on http://localhost:${port}`);
+  console.log(`🌾 Grainix ERP API running on http://localhost:${port}`);
   console.log(`📚 API Docs available at http://localhost:${port}/docs`);
 }
 

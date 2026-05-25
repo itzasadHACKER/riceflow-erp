@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   LayoutDashboard,
@@ -17,6 +17,50 @@ import {
   Bot,
   Settings,
   ChevronDown,
+  ChevronRight,
+  Building,
+  FlaskConical,
+  Receipt,
+  Globe,
+  GitBranch,
+  Cog,
+  FileText,
+  DollarSign,
+  Percent,
+  TrendingUp,
+  Landmark,
+  LogOut,
+  DoorOpen,
+  Layers,
+  UserCheck,
+  Tag,
+  Megaphone,
+  Mail,
+  PiggyBank,
+  Phone,
+  FolderKanban,
+  PackageSearch,
+  CreditCard,
+  Target,
+  Shield,
+  Calendar,
+  Hash,
+  Handshake,
+  ArrowDownCircle,
+  Repeat,
+  Link2,
+  Download,
+  Printer,
+  Route,
+  ArrowLeftRight,
+  Scale,
+  FileCheck,
+  FileSpreadsheet,
+  ShieldCheck,
+  BookOpen,
+  Weight,
+  Package,
+  type LucideIcon,
 } from "lucide-react";
 import {
   Sidebar,
@@ -28,9 +72,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,46 +90,214 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuthStore } from "@/stores/auth-store";
 
-const mainNav = [
-  {
-    title: "Dashboard",
-    href: "/dashboard",
-    icon: LayoutDashboard,
-  },
-];
+interface NavItem {
+  title: string;
+  href: string;
+  icon: LucideIcon;
+}
 
-const moduleNav = [
+interface NavGroup {
+  title: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
+interface NavSection {
+  label: string;
+  groups: NavGroup[];
+}
+
+const moduleNav: NavSection[] = [
   {
     label: "Organization",
-    items: [
-      { title: "Organization", href: "/dashboard/organization", icon: Building2 },
-      { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
+    groups: [
+      {
+        title: "Company",
+        icon: Building2,
+        items: [
+          { title: "Organization", href: "/dashboard/organization", icon: Building2 },
+          { title: "HR & Payroll", href: "/dashboard/hr", icon: Users },
+          { title: "Workflow", href: "/dashboard/workflow", icon: GitBranch },
+          { title: "Announcements", href: "/dashboard/announcements", icon: Megaphone },
+          { title: "Email", href: "/dashboard/email", icon: Mail },
+        ],
+      },
     ],
   },
   {
-    label: "Business",
-    items: [
-      { title: "Finance", href: "/dashboard/finance", icon: Wallet },
-      { title: "Procurement", href: "/dashboard/procurement", icon: Wheat },
-      { title: "Production", href: "/dashboard/production", icon: Factory },
-      { title: "Inventory", href: "/dashboard/inventory", icon: Warehouse },
-      { title: "Sales", href: "/dashboard/sales", icon: ShoppingCart },
-      { title: "Transport", href: "/dashboard/transport", icon: Truck },
+    label: "Finance",
+    groups: [
+      {
+        title: "Accounting",
+        icon: Wallet,
+        items: [
+          { title: "Chart of Accounts", href: "/dashboard/finance", icon: Wallet },
+          { title: "Expense & Vouchers", href: "/dashboard/expense", icon: Receipt },
+          { title: "Bank & Cheques", href: "/dashboard/bank", icon: Landmark },
+          { title: "Deposits & Payments", href: "/dashboard/deposits-payments", icon: CreditCard },
+          { title: "Currencies", href: "/dashboard/currencies", icon: DollarSign },
+          { title: "Assets", href: "/dashboard/assets", icon: Building },
+          { title: "Budgeting", href: "/dashboard/budgeting", icon: PiggyBank },
+          { title: "Credit Notes & Returns", href: "/dashboard/credit-notes", icon: ArrowDownCircle },
+          { title: "Party Khata / Ledger", href: "/dashboard/khata", icon: BookOpen },
+        ],
+      },
+      {
+        title: "Financial Enhancements",
+        icon: Calendar,
+        items: [
+          { title: "Cost Centers", href: "/dashboard/cost-centers", icon: Building2 },
+          { title: "Financial Periods", href: "/dashboard/financial-periods", icon: Calendar },
+          { title: "Payment Wizard", href: "/dashboard/payment-wizard", icon: CreditCard },
+          { title: "Recurring JEs & More", href: "/dashboard/finance-enhanced", icon: Repeat },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Sales & CRM",
+    groups: [
+      {
+        title: "Sales",
+        icon: ShoppingCart,
+        items: [
+          { title: "Sales Orders", href: "/dashboard/sales", icon: ShoppingCart },
+          { title: "Sales Quotations", href: "/dashboard/sales-quotations", icon: FileText },
+          { title: "Export Sales", href: "/dashboard/export-sales", icon: Globe },
+          { title: "Pricing", href: "/dashboard/pricing", icon: Tag },
+          { title: "Commissions", href: "/dashboard/commissions", icon: Percent },
+          { title: "Salespersons", href: "/dashboard/salespersons", icon: UserCheck },
+        ],
+      },
+      {
+        title: "CRM & Marketing",
+        icon: UserSearch,
+        items: [
+          { title: "CRM", href: "/dashboard/crm", icon: UserSearch },
+          { title: "Marketing Campaigns", href: "/dashboard/marketing-campaigns", icon: Target },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Purchasing",
+    groups: [
+      {
+        title: "Procurement",
+        icon: Wheat,
+        items: [
+          { title: "Purchase Orders", href: "/dashboard/procurement", icon: Wheat },
+          { title: "Purchase Invoices", href: "/dashboard/purchase-invoices", icon: Receipt },
+          { title: "Requisitions & RFQ", href: "/dashboard/purchase-enhancements", icon: Handshake },
+          { title: "3-Way Match & More", href: "/dashboard/purchase-enhanced", icon: FileCheck },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Inventory & Logistics",
+    groups: [
+      {
+        title: "Inventory",
+        icon: Warehouse,
+        items: [
+          { title: "Stock & Warehouses", href: "/dashboard/inventory", icon: Warehouse },
+          { title: "Transfers & Counting", href: "/dashboard/inventory-enhanced", icon: ArrowLeftRight },
+          { title: "Batch & Serial", href: "/dashboard/batch-serial", icon: Hash },
+          { title: "Pick & Pack", href: "/dashboard/pick-pack", icon: PackageSearch },
+          { title: "Categories", href: "/dashboard/product-categories", icon: Tag },
+        ],
+      },
+      {
+        title: "Logistics",
+        icon: Truck,
+        items: [
+          { title: "Transport", href: "/dashboard/transport", icon: Truck },
+          { title: "Gate Pass", href: "/dashboard/gate-pass", icon: DoorOpen },
+          { title: "Weighbridge", href: "/dashboard/weighbridge", icon: Weight },
+          { title: "Bardana (Bags)", href: "/dashboard/bardana", icon: Package },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Production",
+    groups: [
+      {
+        title: "Manufacturing",
+        icon: Factory,
+        items: [
+          { title: "Production Batches", href: "/dashboard/production", icon: Factory },
+          { title: "Production Orders", href: "/dashboard/production-orders", icon: Factory },
+          { title: "Capacity & Routing", href: "/dashboard/production-enhanced", icon: Route },
+          { title: "BOM", href: "/dashboard/bom", icon: Layers },
+          { title: "MRP Engine", href: "/dashboard/mrp", icon: Cog },
+          { title: "Machines", href: "/dashboard/machines", icon: Cog },
+          { title: "Quality Control", href: "/dashboard/quality-control", icon: FlaskConical },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Services & Projects",
+    groups: [
+      {
+        title: "Service Management",
+        icon: Phone,
+        items: [
+          { title: "Service Calls", href: "/dashboard/service-management", icon: Phone },
+          { title: "Projects", href: "/dashboard/project-management", icon: FolderKanban },
+        ],
+      },
     ],
   },
   {
     label: "Intelligence",
-    items: [
-      { title: "CRM", href: "/dashboard/crm", icon: UserSearch },
-      { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
-      { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+    groups: [
+      {
+        title: "Reports & BI",
+        icon: BarChart3,
+        items: [
+          { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+          { title: "Market Intel", href: "/dashboard/market", icon: TrendingUp },
+          { title: "Drag & Relate", href: "/dashboard/admin-tools", icon: Link2 },
+          { title: "Excel Export", href: "/dashboard/admin-tools", icon: Download },
+          { title: "Documents", href: "/dashboard/documents", icon: FileText },
+          { title: "AI Assistant", href: "/dashboard/ai", icon: Bot },
+        ],
+      },
+    ],
+  },
+  {
+    label: "Administration",
+    groups: [
+      {
+        title: "Admin Tools",
+        icon: Shield,
+        items: [
+          { title: "Settings", href: "/dashboard/settings", icon: Settings },
+          { title: "Custom Tables & Auth", href: "/dashboard/admin-enhancements", icon: Shield },
+          { title: "UDF & Print Layouts", href: "/dashboard/admin-tools", icon: Printer },
+          { title: "Audit Trail", href: "/dashboard/audit-trail", icon: Shield },
+          { title: "Data Import", href: "/dashboard/data-import", icon: FileSpreadsheet },
+          { title: "New Season Setup", href: "/dashboard/new-season", icon: Calendar },
+          { title: "Integrity Checks", href: "/dashboard/integrity-checks", icon: ShieldCheck },
+        ],
+      },
     ],
   },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
+
+  const initials = user
+    ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase()
+    : "GX";
 
   return (
     <Sidebar collapsible="icon" variant="sidebar">
@@ -85,12 +305,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/dashboard" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-sm">
                 <Wheat className="size-4" />
               </div>
               <div className="flex flex-col gap-0.5 leading-none">
-                <span className="font-semibold">RiceFlow</span>
-                <span className="text-xs text-muted-foreground">
+                <span className="font-semibold">Grainix</span>
+                <span className="text-xs opacity-60">
                   Enterprise ERP
                 </span>
               </div>
@@ -103,41 +323,65 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNav.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    render={<Link href={item.href} />}
-                    isActive={pathname === item.href}
-                    tooltip={item.title}
-                  >
-                    <item.icon className="size-4" />
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  render={<Link href="/dashboard" />}
+                  isActive={pathname === "/dashboard"}
+                  tooltip="Dashboard"
+                >
+                  <LayoutDashboard className="size-4" />
+                  <span>Dashboard</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         <SidebarSeparator />
 
-        {moduleNav.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+        {moduleNav.map((section) => (
+          <SidebarGroup key={section.label}>
+            <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      render={<Link href={item.href} />}
-                      isActive={pathname.startsWith(item.href)}
-                      tooltip={item.title}
+                {section.groups.map((group) => {
+                  const isGroupActive = group.items.some((item) =>
+                    pathname.startsWith(item.href)
+                  );
+                  return (
+                    <Collapsible
+                      key={group.title}
+                      defaultOpen={isGroupActive}
+                      className="group/collapsible"
                     >
-                      <item.icon className="size-4" />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger
+                          render={
+                            <SidebarMenuButton tooltip={group.title} />
+                          }
+                        >
+                          <group.icon className="size-4" />
+                          <span>{group.title}</span>
+                          <ChevronRight className="ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {group.items.map((item) => (
+                              <SidebarMenuSubItem key={item.href}>
+                                <SidebarMenuSubButton
+                                  render={<Link href={item.href} />}
+                                  isActive={pathname.startsWith(item.href)}
+                                >
+                                  <span>{item.title}</span>
+                                </SidebarMenuSubButton>
+                              </SidebarMenuSubItem>
+                            ))}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -148,24 +392,23 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <SidebarMenuButton
-                  size="lg"
-                  className="data-[state=open]:bg-sidebar-accent"
-                >
+              <DropdownMenuTrigger
+                className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm ring-sidebar-ring outline-hidden transition-[width,height,padding] h-12 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 data-[popup-open]:bg-sidebar-accent group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-0!"
+              >
                   <Avatar className="size-8">
-                    <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-                      RF
+                    <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-violet-600 text-white text-xs">
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col gap-0.5 leading-none">
-                    <span className="font-medium text-sm">Admin User</span>
+                    <span className="font-medium text-sm">
+                      {user ? `${user.firstName} ${user.lastName}` : "Admin User"}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      admin@riceflow.com
+                      {user?.email ?? "admin@grainix.com"}
                     </span>
                   </div>
                   <ChevronDown className="ml-auto size-4" />
-                </SidebarMenuButton>
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 className="w-56"
@@ -178,7 +421,15 @@ export function AppSidebar() {
                     Settings
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Sign out</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    logout();
+                    router.push("/login");
+                  }}
+                >
+                  <LogOut className="mr-2 size-4" />
+                  Sign out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>

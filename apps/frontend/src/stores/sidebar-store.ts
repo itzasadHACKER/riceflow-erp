@@ -15,7 +15,7 @@ export const useSidebarStore = create<SidebarState>()(
       setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
     }),
     {
-      name: "riceflow-sidebar",
+      name: "grainix-sidebar",
     }
   )
 );

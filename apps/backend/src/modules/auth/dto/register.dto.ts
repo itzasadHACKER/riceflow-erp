@@ -36,4 +36,9 @@ export class RegisterDto {
   @IsString()
   @IsNotEmpty()
   organizationName: string;
+
+  @ApiPropertyOptional({ example: 'PKR', description: 'Default currency code for the organization' })
+  @IsOptional()
+  @IsString()
+  defaultCurrency?: string;
 }

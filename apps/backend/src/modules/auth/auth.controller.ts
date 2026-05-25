@@ -55,4 +55,26 @@ export class AuthController {
     const result = await this.authService.getProfile(user.sub);
     return createResponse(result);
   }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Change current user password' })
+  async changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { currentPassword: string; newPassword: string },
+  ) {
+    const result = await this.authService.changePassword(user.sub, body.currentPassword, body.newPassword);
+    return createResponse(result);
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get active sessions' })
+  async getSessions(@CurrentUser() user: JwtPayload) {
+    const result = await this.authService.getActiveSessions(user.sub);
+    return createResponse(result);
+  }
 }
