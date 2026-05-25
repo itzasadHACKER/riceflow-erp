@@ -47,7 +47,7 @@ REM -------------------------------------------------------
 REM  Step 2: Check npm
 REM -------------------------------------------------------
 echo [2/7] Checking npm...
-npm --version >nul 2>&1
+call npm --version >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo  ERROR: npm not found. Reinstall Node.js from https://nodejs.org
     pause
@@ -248,13 +248,13 @@ echo  ============================================
 echo.
 
 echo Starting backend server (port 4000)...
-start "Grainix ERP — Backend" cmd /k "cd /d "%~dp0apps\backend" && color 0E && echo. && echo   GRAINIX ERP — Backend Server && echo   http://localhost:4000 && echo   Press Ctrl+C to stop && echo. && npx nest start --watch"
+start "Grainix ERP — Backend" cmd /k "cd /d "%~dp0apps\backend" && color 0E && echo. && echo   GRAINIX ERP — Backend Server && echo   http://localhost:4000 && echo   Press Ctrl+C to stop && echo. && call npx nest start --watch"
 
 echo Waiting for backend to start...
 timeout /t 5 /nobreak > nul
 
 echo Starting frontend server (port 3000)...
-start "Grainix ERP — Frontend" cmd /k "cd /d "%~dp0apps\frontend" && color 0D && echo. && echo   GRAINIX ERP — Frontend Server && echo   http://localhost:3000 && echo   Press Ctrl+C to stop && echo. && npx next dev"
+start "Grainix ERP — Frontend" cmd /k "cd /d "%~dp0apps\frontend" && color 0D && echo. && echo   GRAINIX ERP — Frontend Server && echo   http://localhost:3000 && echo   Press Ctrl+C to stop && echo. && call npx next dev"
 
 echo Waiting for frontend to start...
 timeout /t 10 /nobreak > nul
